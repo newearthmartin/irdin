@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 
 function highlightText(text, words) {
   if (!words.length || !text) return text;
@@ -49,33 +50,27 @@ function loadFields() {
   return ALL_KEYS;
 }
 
-function getUrlParams() {
-  const params = new URLSearchParams(window.location.search);
-  return {
-    q: params.get("q") || "",
-    page: parseInt(params.get("page"), 10) || 1,
-  };
-}
+export default function Search() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialQ = searchParams.get("q") || "";
+  const initialPage = parseInt(searchParams.get("page"), 10) || 1;
 
-function updateUrl(q, p) {
-  const params = new URLSearchParams();
-  if (q.trim()) params.set("q", q);
-  if (p > 1) params.set("page", p);
-  const url = params.toString() ? `?${params}` : window.location.pathname;
-  window.history.replaceState(null, "", url);
-}
-
-export default function App() {
-  const initial = getUrlParams();
-  const [query, setQuery] = useState(initial.q);
+  const [query, setQuery] = useState(initialQ);
   const [fields, setFields] = useState(loadFields);
   const [results, setResults] = useState([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(initial.page);
+  const [page, setPage] = useState(initialPage);
   const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const timerRef = useRef(null);
   const initialLoad = useRef(true);
+
+  function updateUrl(q, p) {
+    const params = new URLSearchParams();
+    if (q.trim()) params.set("q", q);
+    if (p > 1) params.set("page", String(p));
+    setSearchParams(params, { replace: true });
+  }
 
   function toggleField(key) {
     setFields((prev) => {
@@ -114,7 +109,7 @@ export default function App() {
   useEffect(() => {
     if (initialLoad.current) {
       initialLoad.current = false;
-      doSearch(query, initial.page, fields);
+      doSearch(query, initialPage, fields);
       return;
     }
     clearTimeout(timerRef.current);
@@ -164,8 +159,17 @@ export default function App() {
         {results.map((r) => (
           <div key={r.id} className="result-card">
             <h2>
-              <a href={r.url} target="_blank" rel="noopener noreferrer">
+              <Link to={`/palestras/${r.slug}${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ""}`}>
                 {highlightText(r.title, words)}
+              </Link>
+              <a
+                href={r.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="external-link"
+                title="Abrir no site original"
+              >
+                ↗
               </a>
             </h2>
             {r.authors.length > 0 && (

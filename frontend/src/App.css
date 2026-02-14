@@ -91,6 +91,17 @@ h1 {
   text-decoration: underline;
 }
 
+.external-link {
+  margin-left: 0.4rem;
+  font-size: 0.8em;
+  color: #888;
+  text-decoration: none;
+}
+
+.external-link:hover {
+  color: #3498db;
+}
+
 .meta {
   font-size: 0.85rem;
   color: #666;

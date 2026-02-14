@@ -1,5 +1,5 @@
 from django.db.models import Q
-from django.http import JsonResponse
+from django.http import JsonResponse, Http404
 
 from .models import Palestra
 
@@ -23,6 +23,38 @@ def _find_snippet(text, words, max_len=200):
     if end < len(text):
         snippet = snippet + "…"
     return snippet
+
+
+def palestra_detail(request, slug):
+    try:
+        p = Palestra.objects.prefetch_related("authors", "tracks").get(slug=slug)
+    except Palestra.DoesNotExist:
+        return JsonResponse({"error": "Not found"}, status=404)
+
+    tracks = []
+    for t in p.tracks.all():
+        if t.local_path:
+            audio_url = f"/media/{t.local_path}"
+        else:
+            audio_url = t.mp3_url
+        tracks.append({
+            "id": t.id,
+            "name": t.name,
+            "audio_url": audio_url,
+            "transcription_timecoded": t.transcription_timecoded,
+        })
+
+    return JsonResponse({
+        "id": p.id,
+        "title": p.title,
+        "slug": p.slug,
+        "url": p.url,
+        "description": p.description,
+        "categories": p.categories,
+        "tags": p.tags,
+        "authors": [a.name for a in p.authors.all()],
+        "tracks": tracks,
+    })
 
 
 def search(request):
