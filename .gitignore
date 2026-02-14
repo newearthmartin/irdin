@@ -16,3 +16,7 @@ wheels/
 db.sqlite3
 media/
 transcriptions/
+
+# Frontend
+frontend/node_modules/
+static/frontend/
