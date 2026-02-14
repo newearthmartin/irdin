@@ -49,15 +49,33 @@ function loadFields() {
   return ALL_KEYS;
 }
 
+function getUrlParams() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    q: params.get("q") || "",
+    page: parseInt(params.get("page"), 10) || 1,
+  };
+}
+
+function updateUrl(q, p) {
+  const params = new URLSearchParams();
+  if (q.trim()) params.set("q", q);
+  if (p > 1) params.set("page", p);
+  const url = params.toString() ? `?${params}` : window.location.pathname;
+  window.history.replaceState(null, "", url);
+}
+
 export default function App() {
-  const [query, setQuery] = useState("");
+  const initial = getUrlParams();
+  const [query, setQuery] = useState(initial.q);
   const [fields, setFields] = useState(loadFields);
   const [results, setResults] = useState([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initial.page);
   const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const timerRef = useRef(null);
+  const initialLoad = useRef(true);
 
   function toggleField(key) {
     setFields((prev) => {
@@ -73,9 +91,11 @@ export default function App() {
       setTotal(0);
       setPage(1);
       setPages(1);
+      updateUrl("", 1);
       return;
     }
     setLoading(true);
+    updateUrl(q, p);
     const params = new URLSearchParams();
     params.set("q", q);
     params.set("page", p);
@@ -92,6 +112,11 @@ export default function App() {
   }
 
   useEffect(() => {
+    if (initialLoad.current) {
+      initialLoad.current = false;
+      doSearch(query, initial.page, fields);
+      return;
+    }
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       doSearch(query, 1, fields);
