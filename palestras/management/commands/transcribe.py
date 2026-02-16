@@ -66,13 +66,16 @@ class Command(BaseCommand):
             try:
                 segments, info = model.transcribe(str(audio_path), language="pt")
                 duration = info.duration
-                seg_bar = tqdm(
-                    total=int(duration),
-                    unit="s",
-                    desc="  progress",
-                    leave=False,
-                    bar_format="{desc}: {percentage:3.0f}%|{bar}| {n:.0f}/{total:.0f}s [{elapsed}<{remaining}]",
-                )
+                if duration:
+                    seg_bar = tqdm(
+                        total=int(duration),
+                        unit="s",
+                        desc="  progress",
+                        leave=False,
+                        bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt}s [{elapsed}<{remaining}]",
+                    )
+                else:
+                    seg_bar = None
                 plain_parts = []
                 timecoded_parts = []
                 for seg in segments:
@@ -81,8 +84,10 @@ class Command(BaseCommand):
                     h, rem = divmod(int(seg.start), 3600)
                     m, s = divmod(rem, 60)
                     timecoded_parts.append(f"[{h:02d}:{m:02d}:{s:02d}] {text}")
-                    seg_bar.update(int(seg.end) - seg_bar.n)
-                seg_bar.close()
+                    if seg_bar:
+                        seg_bar.update(int(seg.end) - seg_bar.n)
+                if seg_bar:
+                    seg_bar.close()
                 plain_text = " ".join(plain_parts)
                 timecoded_text = "\n".join(timecoded_parts)
             except Exception as e:

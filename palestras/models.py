@@ -39,6 +39,7 @@ class AudioTrack(models.Model):
     transcription_timecoded = models.TextField(blank=True)
     transcription_method = models.CharField(max_length=100, blank=True)
     transcribed_on = models.DateTimeField(null=True, blank=True)
+    concepts = models.JSONField(default=list, blank=True)
 
     def __str__(self):
         return self.name
