@@ -8,6 +8,8 @@ dependencies = [
     "beautifulsoup4>=4.14.3",
     "django>=6.0.2",
     "faster-whisper>=1.2.1",
+    "groq>=1.0.0",
     "httpx>=0.28.1",
     "lxml>=6.0.2",
+    "mlx-whisper>=0.4.3",
 ]
