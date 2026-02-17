@@ -20,6 +20,7 @@ DEFAULT_MODELS = {
     "faster-whisper": "large-v3-turbo",
     "mlx-whisper": "mlx-community/whisper-large-v3-turbo",
     "groq": "whisper-large-v3-turbo",
+    "whisper-cpp": "large-v3-turbo",
 }
 
 
@@ -36,7 +37,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--backend",
             type=str,
-            choices=["faster-whisper", "mlx-whisper", "groq"],
+            choices=["faster-whisper", "mlx-whisper", "groq", "whisper-cpp"],
             default="faster-whisper",
             help="Transcription backend (default: faster-whisper)",
         )
@@ -102,6 +103,24 @@ class Command(BaseCommand):
         duration_secs = segments[-1]["end"] if segments else 0
         return plain_text, timecoded_text, duration_secs
 
+    def _transcribe_whisper_cpp(self, audio_path, model):
+        segments = model.transcribe(str(audio_path))
+        plain_parts = []
+        timecoded_parts = []
+        for seg in segments:
+            text = seg.text.strip()
+            if not text:
+                continue
+            plain_parts.append(text)
+            start_secs = seg.t0 / 100
+            h, rem = divmod(int(start_secs), 3600)
+            m, s = divmod(rem, 60)
+            timecoded_parts.append(f"[{h:02d}:{m:02d}:{s:02d}] {text}")
+        plain_text = " ".join(plain_parts)
+        timecoded_text = "\n".join(timecoded_parts)
+        duration_secs = segments[-1].t1 / 100 if segments else 0
+        return plain_text, timecoded_text, duration_secs
+
     def _transcribe_groq(self, audio_path, model_name):
         from groq import Groq
 
@@ -154,12 +173,18 @@ class Command(BaseCommand):
         if not pending:
             return
 
-        fw_model = None
+        preloaded_model = None
         if backend == "faster-whisper":
             from faster_whisper import WhisperModel
 
             self.stdout.write(f"Loading model {model_name}...")
-            fw_model = WhisperModel(model_name, device="auto", compute_type="auto")
+            preloaded_model = WhisperModel(model_name, device="auto", compute_type="auto")
+            self.stdout.write("Model loaded.")
+        elif backend == "whisper-cpp":
+            from pywhispercpp.model import Model
+
+            self.stdout.write(f"Loading model {model_name}...")
+            preloaded_model = Model(model_name, language="pt")
             self.stdout.write("Model loaded.")
         elif backend == "groq":
             self.stdout.write(f"Using Groq API with model {model_name}")
@@ -179,7 +204,11 @@ class Command(BaseCommand):
             try:
                 if backend == "faster-whisper":
                     plain_text, timecoded_text, duration_secs = (
-                        self._transcribe_faster_whisper(audio_path, fw_model, model_name)
+                        self._transcribe_faster_whisper(audio_path, preloaded_model, model_name)
+                    )
+                elif backend == "whisper-cpp":
+                    plain_text, timecoded_text, duration_secs = (
+                        self._transcribe_whisper_cpp(audio_path, preloaded_model)
                     )
                 elif backend == "groq":
                     plain_text, timecoded_text, duration_secs = (

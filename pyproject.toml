@@ -12,4 +12,5 @@ dependencies = [
     "httpx>=0.28.1",
     "lxml>=6.0.2",
     "mlx-whisper>=0.4.3",
+    "pywhispercpp>=1.4.1",
 ]
