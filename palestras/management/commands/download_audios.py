@@ -27,11 +27,13 @@ class Command(BaseCommand):
 
         AUDIOS_DIR.mkdir(exist_ok=True)
 
-        qs = AudioTrack.objects.filter(downloaded=False)
+        pending = [
+            t for t in AudioTrack.objects.all()
+            if not t.local_path
+            or not (AUDIOS_DIR / Path(t.local_path.name).name).exists()
+        ]
         if limit:
-            qs = qs[:limit]
-
-        pending = list(qs)
+            pending = pending[:limit]
         self.stdout.write(f"Found {len(pending)} tracks to download")
 
         with httpx.Client(timeout=120, follow_redirects=True) as client:
@@ -42,7 +44,6 @@ class Command(BaseCommand):
                 if dest.exists():
                     self.stdout.write(f"[{i}/{len(pending)}] Already exists: {filename}")
                     track.local_path = f"audios/{filename}"
-                    track.downloaded = True
                     track.save()
                     continue
 
@@ -64,7 +65,6 @@ class Command(BaseCommand):
                     continue
 
                 track.local_path = f"audios/{filename}"
-                track.downloaded = True
                 track.save()
 
                 size_mb = dest.stat().st_size / (1024 * 1024)
@@ -72,7 +72,7 @@ class Command(BaseCommand):
 
                 time.sleep(delay)
 
-        total_done = AudioTrack.objects.filter(downloaded=True).count()
+        total_done = AudioTrack.objects.filter(local_path__gt="").count()
         total = AudioTrack.objects.count()
         self.stdout.write(
             self.style.SUCCESS(f"Done. Downloaded: {total_done}/{total}")

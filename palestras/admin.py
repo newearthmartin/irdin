@@ -8,7 +8,7 @@ from .models import AudioTrack, Author, Palestra
 class AudioTrackInline(admin.TabularInline):
     model = AudioTrack
     extra = 0
-    readonly_fields = ("name", "mp3_url", "local_path", "downloaded", "transcription", "transcribed_on")
+    readonly_fields = ("name", "mp3_url", "local_path", "transcription", "transcribed_on")
 
 
 @admin.register(Palestra)
@@ -32,18 +32,15 @@ class AuthorAdmin(admin.ModelAdmin):
 
 @admin.register(AudioTrack)
 class AudioTrackAdmin(admin.ModelAdmin):
-    list_display = ("name", "palestra", "downloaded", "transcribed_on")
-    list_filter = ("downloaded", "transcribed_on")
+    list_display = ("name", "palestra", "local_path", "transcribed_on")
+    list_filter = ("transcribed_on",)
     search_fields = ("name", "palestra__title")
     actions = ["clear_downloaded_file"]
 
     @admin.action(description="Clear downloaded file")
     def clear_downloaded_file(self, request, queryset):
         count = 0
-        for track in queryset.filter(downloaded=True):
-            if track.local_path:
-                track.local_path.delete(save=False)
-            track.downloaded = False
-            track.save()
+        for track in queryset.filter(local_path__gt=""):
+            track.local_path.delete(save=True)
             count += 1
         self.message_user(request, f"Cleared {count} downloaded file(s).")

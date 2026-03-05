@@ -25,7 +25,7 @@ class Command(BaseCommand):
         delay = options["delay"]
         limit = options["limit"]
 
-        qs = AudioTrack.objects.filter(downloaded=True)
+        qs = AudioTrack.objects.filter(local_path__gt="")
         if limit:
             qs = qs[:limit]
 
@@ -91,7 +91,7 @@ class Command(BaseCommand):
             ))
             bad_ids = [t.pk for t in missing + size_mismatch]
             self.stdout.write(
-                f"  AudioTrack.objects.filter(pk__in={bad_ids}).update(downloaded=False)"
+                f"  AudioTrack.objects.filter(pk__in={bad_ids}).update(local_path='')"
             )
             self.stdout.write("  Then run: uv run python manage.py download_audios")
         else:

@@ -185,16 +185,15 @@ class Command(BaseCommand):
 
         method = f"{backend}:{model_name}"
 
-        qs = AudioTrack.objects.filter(downloaded=True)
+        qs = AudioTrack.objects.filter(local_path__gt="")
         if retranscribe:
             qs = qs.exclude(transcription_method=method)
         else:
             qs = qs.filter(transcribed_on__isnull=True)
 
+        pending = [t for t in qs if Path(settings.MEDIA_ROOT / t.local_path.name).exists()]
         if limit:
-            qs = qs[:limit]
-
-        pending = list(qs)
+            pending = pending[:limit]
         self.stdout.write(f"Found {len(pending)} tracks to transcribe with {method}")
 
         if not pending:
@@ -272,7 +271,7 @@ class Command(BaseCommand):
             tqdm.write(f"{track.name} — {duration_secs:.0f}s audio, {words} words")
 
         total_done = AudioTrack.objects.filter(transcribed_on__isnull=False).count()
-        total = AudioTrack.objects.filter(downloaded=True).count()
+        total = AudioTrack.objects.filter(local_path__gt="").count()
         self.stdout.write(
             self.style.SUCCESS(f"Done. Transcribed: {total_done}/{total}")
         )

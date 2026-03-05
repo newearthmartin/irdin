@@ -36,7 +36,6 @@ class AudioTrack(models.Model):
     name = models.CharField(max_length=500)
     mp3_url = models.URLField(max_length=500)
     local_path = models.FileField(upload_to="audios", max_length=500, blank=True)
-    downloaded = models.BooleanField(default=False)
     transcription = models.TextField(blank=True)
     transcription_timecoded = models.TextField(blank=True)
     transcription_method = models.CharField(max_length=100, blank=True)
