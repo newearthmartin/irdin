@@ -4,6 +4,13 @@ from django.http import JsonResponse, Http404
 from .models import Palestra
 
 
+def _author_data(author):
+    return {
+        "name": author.name,
+        "photo_url": f"/media/{author.photo}" if author.photo else None,
+    }
+
+
 def _find_snippet(text, words, max_len=200):
     """Return a snippet of text around the first matching word."""
     lower = text.lower()
@@ -52,7 +59,7 @@ def palestra_detail(request, slug):
         "description": p.description,
         "categories": p.categories,
         "tags": p.tags,
-        "authors": [a.name for a in p.authors.all()],
+        "authors": [_author_data(a) for a in p.authors.all()],
         "tracks": tracks,
     })
 
@@ -117,7 +124,7 @@ def search(request):
                 "description": p.description,
                 "categories": p.categories,
                 "tags": p.tags,
-                "authors": [a.name for a in p.authors.all()],
+                "authors": [_author_data(a) for a in p.authors.all()],
                 "track_count": p.tracks.count(),
                 "transcription_snippets": transcription_snippets,
             }

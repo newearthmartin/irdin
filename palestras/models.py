@@ -4,6 +4,8 @@ from django.db import models
 class Author(models.Model):
     name = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255, unique=True)
+    photo = models.ImageField(upload_to="author_photos", blank=True)
+    wikipedia_search = models.CharField(max_length=255, blank=True)
 
     def __str__(self):
         return self.name

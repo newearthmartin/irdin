@@ -173,9 +173,17 @@ export default function Search() {
               </a>
             </h2>
             {r.authors.length > 0 && (
-              <p className="meta authors">
-                {highlightText(r.authors.join(", "), words)}
-              </p>
+              <div className="authors-row">
+                {r.authors.map((a, i) => (
+                  <span key={i} className="author-chip">
+                    {a.photo_url
+                      ? <img src={a.photo_url} alt={a.name} className="author-avatar" />
+                      : <span className="author-avatar author-initial">{a.name[0]}</span>
+                    }
+                    {highlightText(a.name, words)}
+                  </span>
+                ))}
+              </div>
             )}
             {(r.categories || r.tags) && (
               <p className="meta tags">

@@ -156,7 +156,17 @@ export default function PalestraDetail() {
       <h1>{data.title}</h1>
 
       {data.authors.length > 0 && (
-        <p className="meta authors">{data.authors.join(", ")}</p>
+        <div className="authors-row">
+          {data.authors.map((a, i) => (
+            <span key={i} className="author-chip">
+              {a.photo_url
+                ? <img src={a.photo_url} alt={a.name} className="author-avatar" />
+                : <span className="author-avatar author-initial">{a.name[0]}</span>
+              }
+              {a.name}
+            </span>
+          ))}
+        </div>
       )}
 
       {(data.categories || data.tags) && (
