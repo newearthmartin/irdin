@@ -28,7 +28,7 @@ uv run python manage.py extract_concepts    # Extract concepts from transcriptio
 --workers 4       # parallel workers (scrape_products)
 
 # Transcribe options
---backend faster-whisper|mlx-whisper|groq|whisper-cpp  # default: faster-whisper
+--backend faster-whisper|mlx-whisper|groq|whisper-cpp|openai  # default: faster-whisper
 --model <name>    # override default model for chosen backend
 --retranscribe    # re-transcribe tracks done with a different method
 ```

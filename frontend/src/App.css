@@ -1,3 +1,42 @@
+:root,
+[data-theme="light"] {
+  --bg: #f5f5f5;
+  --bg-card: #fff;
+  --bg-snippet: #f8f9fa;
+  --text: #333;
+  --text-secondary: #444;
+  --text-muted: #666;
+  --text-label: #555;
+  --heading: #2c3e50;
+  --link: #1a0dab;
+  --accent: #3498db;
+  --border: #ddd;
+  --border-light: #eee;
+  --shadow: rgba(0, 0, 0, 0.08);
+  --mark-bg: #fff3b0;
+  --hover-bg: #f0f4f8;
+  --active-bg: #e8f4fd;
+}
+
+[data-theme="dark"] {
+  --bg: #1a1a2e;
+  --bg-card: #16213e;
+  --bg-snippet: #1a1a2e;
+  --text: #e0e0e0;
+  --text-secondary: #ccc;
+  --text-muted: #aaa;
+  --text-label: #bbb;
+  --heading: #e8e8e8;
+  --link: #8ab4f8;
+  --accent: #5dade2;
+  --border: #2a2a4a;
+  --border-light: #2a2a4a;
+  --shadow: rgba(0, 0, 0, 0.3);
+  --mark-bg: #5a4e1a;
+  --hover-bg: #1e2a45;
+  --active-bg: #1e3a5f;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -6,9 +45,32 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: #f5f5f5;
-  color: #333;
+  background: var(--bg);
+  color: var(--text);
   line-height: 1.5;
+}
+
+.theme-toggle {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 100;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px var(--shadow);
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.theme-toggle:hover {
+  border-color: var(--accent);
 }
 
 .container {
@@ -20,7 +82,7 @@ body {
 h1 {
   text-align: center;
   margin-bottom: 1.5rem;
-  color: #2c3e50;
+  color: var(--heading);
   font-size: 1.6rem;
 }
 
@@ -28,14 +90,16 @@ h1 {
   width: 100%;
   padding: 0.75rem 1rem;
   font-size: 1.1rem;
-  border: 2px solid #ddd;
+  border: 2px solid var(--border);
   border-radius: 8px;
   outline: none;
   transition: border-color 0.2s;
+  background: var(--bg-card);
+  color: var(--text);
 }
 
 .search-input:focus {
-  border-color: #3498db;
+  border-color: var(--accent);
 }
 
 .field-filters {
@@ -50,7 +114,7 @@ h1 {
   align-items: center;
   gap: 0.3rem;
   font-size: 0.85rem;
-  color: #555;
+  color: var(--text-label);
   cursor: pointer;
   user-select: none;
 }
@@ -61,7 +125,7 @@ h1 {
 
 .status {
   margin: 1rem 0 0.5rem;
-  color: #666;
+  color: var(--text-muted);
   font-size: 0.9rem;
 }
 
@@ -70,11 +134,11 @@ h1 {
 }
 
 .result-card {
-  background: #fff;
+  background: var(--bg-card);
   border-radius: 8px;
   padding: 1rem 1.25rem;
   margin-bottom: 0.75rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px var(--shadow);
 }
 
 .result-card h2 {
@@ -83,7 +147,7 @@ h1 {
 }
 
 .result-card h2 a {
-  color: #1a0dab;
+  color: var(--link);
   text-decoration: none;
 }
 
@@ -94,37 +158,37 @@ h1 {
 .external-link {
   margin-left: 0.4rem;
   font-size: 0.8em;
-  color: #888;
+  color: var(--text-muted);
   text-decoration: none;
 }
 
 .external-link:hover {
-  color: #3498db;
+  color: var(--accent);
 }
 
 .meta {
   font-size: 0.85rem;
-  color: #666;
+  color: var(--text-muted);
   margin-bottom: 0.2rem;
 }
 
 .description {
   font-size: 0.9rem;
-  color: #444;
+  color: var(--text-secondary);
   margin-top: 0.4rem;
 }
 
 .transcription-matches {
   margin-top: 0.5rem;
   padding: 0.5rem 0.75rem;
-  background: #f8f9fa;
-  border-left: 3px solid #3498db;
+  background: var(--bg-snippet);
+  border-left: 3px solid var(--accent);
   border-radius: 0 4px 4px 0;
 }
 
 .transcription-snippet {
   font-size: 0.85rem;
-  color: #444;
+  color: var(--text-secondary);
   margin-bottom: 0.3rem;
 }
 
@@ -134,11 +198,12 @@ h1 {
 
 .snippet-label {
   font-weight: 600;
-  color: #555;
+  color: var(--text-label);
 }
 
 mark {
-  background: #fff3b0;
+  background: var(--mark-bg);
+  color: var(--text);
   padding: 0 2px;
   border-radius: 2px;
 }
@@ -153,9 +218,10 @@ mark {
 
 .pagination button {
   padding: 0.5rem 1rem;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: #fff;
+  background: var(--bg-card);
+  color: var(--text);
   cursor: pointer;
   font-size: 0.9rem;
 }
@@ -167,5 +233,5 @@ mark {
 
 .pagination span {
   font-size: 0.9rem;
-  color: #666;
+  color: var(--text-muted);
 }

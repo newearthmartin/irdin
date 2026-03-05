@@ -21,6 +21,7 @@ DEFAULT_MODELS = {
     "mlx-whisper": "mlx-community/whisper-large-v3-turbo",
     "groq": "whisper-large-v3-turbo",
     "whisper-cpp": "large-v3-turbo",
+    "openai": "gpt-4o-transcribe",
 }
 
 
@@ -37,7 +38,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--backend",
             type=str,
-            choices=["faster-whisper", "mlx-whisper", "groq", "whisper-cpp"],
+            choices=["faster-whisper", "mlx-whisper", "groq", "whisper-cpp", "openai"],
             default="faster-whisper",
             help="Transcription backend (default: faster-whisper)",
         )
@@ -147,6 +148,32 @@ class Command(BaseCommand):
         duration_secs = segments[-1]["end"] if segments else 0
         return plain_text, timecoded_text, duration_secs
 
+    def _transcribe_openai(self, audio_path, model_name):
+        from openai import OpenAI
+
+        client = OpenAI()
+        with open(audio_path, "rb") as audio_file:
+            response = client.audio.transcriptions.create(
+                file=audio_file,
+                model=model_name,
+                language="pt",
+                response_format="verbose_json",
+                timestamp_granularities=["segment"],
+            )
+        segments = response.segments or []
+        plain_parts = []
+        timecoded_parts = []
+        for seg in segments:
+            text = seg["text"].strip()
+            plain_parts.append(text)
+            h, rem = divmod(int(seg["start"]), 3600)
+            m, s = divmod(rem, 60)
+            timecoded_parts.append(f"[{h:02d}:{m:02d}:{s:02d}] {text}")
+        plain_text = " ".join(plain_parts)
+        timecoded_text = "\n".join(timecoded_parts)
+        duration_secs = segments[-1]["end"] if segments else 0
+        return plain_text, timecoded_text, duration_secs
+
     def handle(self, *args, **options):
         limit = options["limit"]
         backend = options["backend"]
@@ -188,6 +215,8 @@ class Command(BaseCommand):
             self.stdout.write("Model loaded.")
         elif backend == "groq":
             self.stdout.write(f"Using Groq API with model {model_name}")
+        elif backend == "openai":
+            self.stdout.write(f"Using OpenAI API with model {model_name}")
         else:
             self.stdout.write(f"Using mlx-whisper with model {model_name}")
 
@@ -213,6 +242,10 @@ class Command(BaseCommand):
                 elif backend == "groq":
                     plain_text, timecoded_text, duration_secs = (
                         self._transcribe_groq(audio_path, model_name)
+                    )
+                elif backend == "openai":
+                    plain_text, timecoded_text, duration_secs = (
+                        self._transcribe_openai(audio_path, model_name)
                     )
                 else:
                     plain_text, timecoded_text, duration_secs = (
