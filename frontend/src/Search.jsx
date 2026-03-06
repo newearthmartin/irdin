@@ -63,7 +63,7 @@ function loadSelectedLanguages() {
   return [];
 }
 
-function CheckboxDropdown({ label, items, selected, onToggle }) {
+function CheckboxDropdown({ label, pluralLabel, items, selected, onToggle }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -80,7 +80,7 @@ function CheckboxDropdown({ label, items, selected, onToggle }) {
       ? label
       : selected.length === 1
       ? items.find((i) => i.value === selected[0])?.label || selected[0]
-      : `${selected.length} ${label.toLowerCase()}`;
+      : `${selected.length} ${(pluralLabel || label).toLowerCase()}`;
 
   return (
     <div className="author-dropdown" ref={ref}>
@@ -242,6 +242,7 @@ export default function Search() {
         />
         <CheckboxDropdown
           label="Idioma"
+          pluralLabel="Idiomas"
           items={languagesList}
           selected={selectedLanguages}
           onToggle={toggleLanguage}
