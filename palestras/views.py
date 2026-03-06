@@ -37,6 +37,17 @@ def authors_list(request):
     return JsonResponse({"authors": list(authors)})
 
 
+def languages_list(request):
+    languages = (
+        Palestra.objects.exclude(language__isnull=True)
+        .exclude(language="")
+        .values_list("language", flat=True)
+        .distinct()
+        .order_by("language")
+    )
+    return JsonResponse({"languages": list(languages)})
+
+
 def palestra_detail(request, slug):
     try:
         p = Palestra.objects.prefetch_related("authors", "tracks").get(slug=slug)
@@ -75,8 +86,9 @@ def search(request):
     page = int(request.GET.get("page", 1))
     per_page = 20
     author_slugs = request.GET.getlist("author")
+    selected_languages = request.GET.getlist("language")
 
-    if not query and not author_slugs:
+    if not query and not author_slugs and not selected_languages:
         return JsonResponse({"results": [], "total": 0, "page": 1, "pages": 1})
 
     words = query.split() if query else []
@@ -102,6 +114,9 @@ def search(request):
 
     if author_slugs:
         qs = qs.filter(authors__slug__in=author_slugs)
+
+    if selected_languages:
+        qs = qs.filter(language__in=selected_languages)
 
     qs = qs.distinct()
     total = qs.count()

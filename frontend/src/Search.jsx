@@ -55,7 +55,15 @@ function loadSelectedAuthors() {
   return [];
 }
 
-function AuthorDropdown({ authors, selected, onToggle }) {
+function loadSelectedLanguages() {
+  try {
+    const stored = localStorage.getItem("searchLanguages");
+    if (stored) return JSON.parse(stored);
+  } catch {}
+  return [];
+}
+
+function CheckboxDropdown({ label, items, selected, onToggle }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -67,12 +75,12 @@ function AuthorDropdown({ authors, selected, onToggle }) {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const label =
+  const btnLabel =
     selected.length === 0
-      ? "Autores"
+      ? label
       : selected.length === 1
-      ? authors.find((a) => a.slug === selected[0])?.name || "1 autor"
-      : `${selected.length} autores`;
+      ? items.find((i) => i.value === selected[0])?.label || selected[0]
+      : `${selected.length} ${label.toLowerCase()}`;
 
   return (
     <div className="author-dropdown" ref={ref}>
@@ -81,18 +89,18 @@ function AuthorDropdown({ authors, selected, onToggle }) {
         onClick={() => setOpen((o) => !o)}
         type="button"
       >
-        {label} ▾
+        {btnLabel} ▾
       </button>
       {open && (
         <div className="author-dropdown-panel">
-          {authors.map((a) => (
-            <label key={a.slug} className="field-checkbox">
+          {items.map((item) => (
+            <label key={item.value} className="field-checkbox">
               <input
                 type="checkbox"
-                checked={selected.includes(a.slug)}
-                onChange={() => onToggle(a.slug)}
+                checked={selected.includes(item.value)}
+                onChange={() => onToggle(item.value)}
               />
-              {a.name}
+              {item.label}
             </label>
           ))}
         </div>
@@ -109,7 +117,9 @@ export default function Search() {
   const [query, setQuery] = useState(initialQ);
   const [fields, setFields] = useState(loadFields);
   const [selectedAuthors, setSelectedAuthors] = useState(loadSelectedAuthors);
+  const [selectedLanguages, setSelectedLanguages] = useState(loadSelectedLanguages);
   const [authorsList, setAuthorsList] = useState([]);
+  const [languagesList, setLanguagesList] = useState([]);
   const [results, setResults] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(initialPage);
@@ -121,7 +131,10 @@ export default function Search() {
   useEffect(() => {
     fetch("/api/authors")
       .then((r) => r.json())
-      .then((data) => setAuthorsList(data.authors));
+      .then((data) => setAuthorsList(data.authors.map((a) => ({ value: a.slug, label: a.name }))));
+    fetch("/api/languages")
+      .then((r) => r.json())
+      .then((data) => setLanguagesList(data.languages.map((l) => ({ value: l, label: l }))));
   }, []);
 
   function updateUrl(q, p) {
@@ -147,8 +160,16 @@ export default function Search() {
     });
   }
 
-  function doSearch(q, p = 1, f = fields, authors = selectedAuthors) {
-    if (!q.trim() && authors.length === 0) {
+  function toggleLanguage(lang) {
+    setSelectedLanguages((prev) => {
+      const next = prev.includes(lang) ? prev.filter((s) => s !== lang) : [...prev, lang];
+      localStorage.setItem("searchLanguages", JSON.stringify(next));
+      return next;
+    });
+  }
+
+  function doSearch(q, p = 1, f = fields, authors = selectedAuthors, languages = selectedLanguages) {
+    if (!q.trim() && authors.length === 0 && languages.length === 0) {
       setResults([]);
       setTotal(0);
       setPage(1);
@@ -163,6 +184,7 @@ export default function Search() {
     params.set("page", p);
     f.forEach((field) => params.append("fields", field));
     authors.forEach((slug) => params.append("author", slug));
+    languages.forEach((lang) => params.append("language", lang));
     fetch(`/api/search?${params}`)
       .then((r) => r.json())
       .then((data) => {
@@ -177,15 +199,15 @@ export default function Search() {
   useEffect(() => {
     if (initialLoad.current) {
       initialLoad.current = false;
-      doSearch(query, initialPage, fields, selectedAuthors);
+      doSearch(query, initialPage, fields, selectedAuthors, selectedLanguages);
       return;
     }
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
-      doSearch(query, 1, fields, selectedAuthors);
+      doSearch(query, 1, fields, selectedAuthors, selectedLanguages);
     }, 300);
     return () => clearTimeout(timerRef.current);
-  }, [query, fields, selectedAuthors]);
+  }, [query, fields, selectedAuthors, selectedLanguages]);
 
   const words = query.trim().split(/\s+/).filter(Boolean);
 
@@ -212,16 +234,23 @@ export default function Search() {
             {label}
           </label>
         ))}
-        <AuthorDropdown
-          authors={authorsList}
+        <CheckboxDropdown
+          label="Autores"
+          items={authorsList}
           selected={selectedAuthors}
           onToggle={toggleAuthor}
+        />
+        <CheckboxDropdown
+          label="Idioma"
+          items={languagesList}
+          selected={selectedLanguages}
+          onToggle={toggleLanguage}
         />
       </div>
 
       {loading && <p className="status">Buscando…</p>}
 
-      {!loading && (query.trim() || selectedAuthors.length > 0) && (
+      {!loading && (query.trim() || selectedAuthors.length > 0 || selectedLanguages.length > 0) && (
         <p className="status">
           {total} resultado{total !== 1 ? "s" : ""} encontrado
           {total !== 1 ? "s" : ""}
