@@ -47,7 +47,7 @@ function loadFields() {
     const stored = localStorage.getItem("searchFields");
     if (stored) return JSON.parse(stored);
   } catch {}
-  return ALL_KEYS;
+  return [];
 }
 
 export default function Search() {
