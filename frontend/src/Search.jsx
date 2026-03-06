@@ -113,11 +113,20 @@ export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQ = searchParams.get("q") || "";
   const initialPage = parseInt(searchParams.get("page"), 10) || 1;
+  const initialFields = searchParams.getAll("fields").length > 0
+    ? searchParams.getAll("fields")
+    : loadFields();
+  const initialAuthors = searchParams.getAll("author").length > 0
+    ? searchParams.getAll("author")
+    : loadSelectedAuthors();
+  const initialLanguages = searchParams.getAll("language").length > 0
+    ? searchParams.getAll("language")
+    : loadSelectedLanguages();
 
   const [query, setQuery] = useState(initialQ);
-  const [fields, setFields] = useState(loadFields);
-  const [selectedAuthors, setSelectedAuthors] = useState(loadSelectedAuthors);
-  const [selectedLanguages, setSelectedLanguages] = useState(loadSelectedLanguages);
+  const [fields, setFields] = useState(initialFields);
+  const [selectedAuthors, setSelectedAuthors] = useState(initialAuthors);
+  const [selectedLanguages, setSelectedLanguages] = useState(initialLanguages);
   const [authorsList, setAuthorsList] = useState([]);
   const [languagesList, setLanguagesList] = useState([]);
   const [results, setResults] = useState([]);
@@ -137,10 +146,13 @@ export default function Search() {
       .then((data) => setLanguagesList(data.languages.map((l) => ({ value: l, label: l }))));
   }, []);
 
-  function updateUrl(q, p) {
+  function updateUrl(q, p, f, authors, languages) {
     const params = new URLSearchParams();
     if (q.trim()) params.set("q", q);
     if (p > 1) params.set("page", String(p));
+    f.forEach((field) => params.append("fields", field));
+    authors.forEach((slug) => params.append("author", slug));
+    languages.forEach((lang) => params.append("language", lang));
     setSearchParams(params, { replace: true });
   }
 
@@ -174,11 +186,11 @@ export default function Search() {
       setTotal(0);
       setPage(1);
       setPages(1);
-      updateUrl("", 1);
+      updateUrl("", 1, f, authors, languages);
       return;
     }
     setLoading(true);
-    updateUrl(q, p);
+    updateUrl(q, p, f, authors, languages);
     const params = new URLSearchParams();
     params.set("q", q);
     params.set("page", p);
