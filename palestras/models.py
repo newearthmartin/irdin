@@ -22,6 +22,7 @@ class Palestra(models.Model):
     weight = models.CharField(max_length=100, blank=True)
     dimensions = models.CharField(max_length=100, blank=True)
     media_format = models.CharField(max_length=100, blank=True)
+    language = models.CharField(max_length=100, blank=True)
     authors = models.ManyToManyField(Author, blank=True)
     scraped_on = models.DateTimeField(null=True, blank=True)
 

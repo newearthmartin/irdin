@@ -41,7 +41,7 @@ class AudioTrackInline(admin.TabularInline):
 @admin.register(Palestra)
 class PalestraAdmin(admin.ModelAdmin):
     list_display = ("title", "slug", "scraped_on", "track_count", "categories")
-    list_filter = ("scraped_on", "categories", "media_format", AudioDownloadedFilter)
+    list_filter = ("scraped_on", "language", "categories", "media_format", AudioDownloadedFilter)
     search_fields = ("title", "slug", "sku", "description")
     filter_horizontal = ("authors",)
     inlines = [AudioTrackInline]

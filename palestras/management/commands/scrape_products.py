@@ -28,11 +28,19 @@ class Command(BaseCommand):
         parser.add_argument(
             "--workers", type=int, default=4, help="Number of parallel threads"
         )
+        parser.add_argument(
+            "--reset", action="store_true", help="Clear scraped_on for all products and exit"
+        )
 
     def handle(self, *args, **options):
         delay = options["delay"]
         limit = options["limit"]
         workers = options["workers"]
+
+        if options["reset"]:
+            count = Palestra.objects.exclude(scraped_on=None).update(scraped_on=None)
+            self.stdout.write(self.style.SUCCESS(f"Reset scraped_on for {count} products."))
+            return
 
         qs = Palestra.objects.filter(scraped_on__isnull=True)
         if limit:
@@ -137,6 +145,8 @@ class Command(BaseCommand):
                     palestra.dimensions = td.get_text(strip=True)
                 elif "mídia" in label or "media" in label or "formato" in label:
                     palestra.media_format = td.get_text(strip=True)
+                elif "idioma" in label:
+                    palestra.language = td.get_text(strip=True)
                 elif "autor" in label or "author" in label:
                     self._parse_authors(palestra, td)
 
