@@ -235,7 +235,8 @@ export default function Search() {
           </label>
         ))}
         <CheckboxDropdown
-          label="Autores"
+          label="Autor"
+          pluralLabel="Autores"
           items={authorsList}
           selected={selectedAuthors}
           onToggle={toggleAuthor}
