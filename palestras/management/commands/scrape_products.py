@@ -146,7 +146,10 @@ class Command(BaseCommand):
                 elif "mídia" in label or "media" in label or "formato" in label:
                     palestra.media_format = td.get_text(strip=True)
                 elif "idioma" in label:
-                    palestra.language = td.get_text(strip=True)
+                    language = td.get_text(strip=True)
+                    if language == "Multi-idioma":
+                        language = "Inglês,Português"
+                    palestra.language = language
                 elif "autor" in label or "author" in label:
                     self._parse_authors(palestra, td)
 
