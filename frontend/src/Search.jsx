@@ -185,10 +185,10 @@ export default function Search() {
                 ))}
               </div>
             )}
-            {(r.categories || r.tags) && (
+            {(r.categories || r.tags || r.language) && (
               <p className="meta tags">
                 {highlightText(
-                  [r.categories, r.tags].filter(Boolean).join(" · "),
+                  [r.language, r.categories, r.tags].filter(Boolean).join(" · "),
                   words
                 )}
               </p>

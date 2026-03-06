@@ -169,9 +169,9 @@ export default function PalestraDetail() {
         </div>
       )}
 
-      {(data.categories || data.tags) && (
+      {(data.categories || data.tags || data.language) && (
         <p className="meta tags">
-          {[data.categories, data.tags].filter(Boolean).join(" · ")}
+          {[data.language, data.categories, data.tags].filter(Boolean).join(" · ")}
         </p>
       )}
 

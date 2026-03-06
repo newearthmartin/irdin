@@ -59,6 +59,7 @@ def palestra_detail(request, slug):
         "description": p.description,
         "categories": p.categories,
         "tags": p.tags,
+        "language": p.language,
         "authors": [_author_data(a) for a in p.authors.all()],
         "tracks": tracks,
     })
@@ -124,6 +125,7 @@ def search(request):
                 "description": p.description,
                 "categories": p.categories,
                 "tags": p.tags,
+                "language": p.language,
                 "authors": [_author_data(a) for a in p.authors.all()],
                 "track_count": p.tracks.count(),
                 "transcription_snippets": transcription_snippets,
