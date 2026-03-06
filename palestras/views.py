@@ -1,7 +1,7 @@
 from django.db.models import Q
 from django.http import JsonResponse, Http404
 
-from .models import Palestra
+from .models import Author, Palestra
 
 
 def _author_data(author):
@@ -30,6 +30,11 @@ def _find_snippet(text, words, max_len=200):
     if end < len(text):
         snippet = snippet + "…"
     return snippet
+
+
+def authors_list(request):
+    authors = Author.objects.order_by("name").values("name", "slug")
+    return JsonResponse({"authors": list(authors)})
 
 
 def palestra_detail(request, slug):
@@ -69,11 +74,12 @@ def search(request):
     query = request.GET.get("q", "").strip()
     page = int(request.GET.get("page", 1))
     per_page = 20
+    author_slugs = request.GET.getlist("author")
 
-    if not query:
+    if not query and not author_slugs:
         return JsonResponse({"results": [], "total": 0, "page": 1, "pages": 1})
 
-    words = query.split()
+    words = query.split() if query else []
     fields = request.GET.getlist("fields")
 
     FIELD_MAP = {
@@ -81,7 +87,6 @@ def search(request):
         "description": "description__icontains",
         "categories": "categories__icontains",
         "tags": "tags__icontains",
-        "authors": "authors__name__icontains",
         "transcriptions": "tracks__transcription__icontains",
     }
 
@@ -94,6 +99,9 @@ def search(request):
         for lookup in active_fields.values():
             word_q |= Q(**{lookup: word})
         qs = qs.filter(word_q)
+
+    if author_slugs:
+        qs = qs.filter(authors__slug__in=author_slugs)
 
     qs = qs.distinct()
     total = qs.count()

@@ -23,7 +23,7 @@ from django.contrib import admin
 from django.http import FileResponse, Http404, HttpResponse, StreamingHttpResponse
 from django.urls import path, re_path
 
-from palestras.views import palestra_detail, search
+from palestras.views import authors_list, palestra_detail, search
 
 FRONTEND_INDEX = settings.BASE_DIR / "static" / "frontend" / "index.html"
 
@@ -63,6 +63,7 @@ def serve_media(request, path):
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/authors', authors_list),
     path('api/search', search),
     path('api/palestras/<slug:slug>', palestra_detail),
 ]
