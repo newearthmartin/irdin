@@ -120,10 +120,18 @@ def search(request):
         qs = qs.filter(authors__slug__in=author_slugs)
 
     if selected_languages:
-        lang_q = Q()
-        for lang in selected_languages:
-            lang_q |= Q(language__icontains=lang)
-        qs = qs.filter(lang_q)
+        selected_set = set(selected_languages)
+        all_raw = (
+            Palestra.objects.exclude(language__isnull=True)
+            .exclude(language="")
+            .values_list("language", flat=True)
+            .distinct()
+        )
+        matching_raw = {
+            raw for raw in all_raw
+            if {p.strip() for p in raw.split(",")} & selected_set
+        }
+        qs = qs.filter(language__in=matching_raw) if matching_raw else qs.none()
 
     qs = qs.distinct()
     total = qs.count()
