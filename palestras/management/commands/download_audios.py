@@ -1,13 +1,6 @@
-import time
-from pathlib import Path
-
-import httpx
-from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from palestras.models import AudioTrack
-
-AUDIOS_DIR = Path(settings.MEDIA_ROOT) / "audios"
+from palestras.audio_download import download_tracks, pending_tracks
 
 
 class Command(BaseCommand):
@@ -25,55 +18,24 @@ class Command(BaseCommand):
         delay = options["delay"]
         limit = options["limit"]
 
-        AUDIOS_DIR.mkdir(exist_ok=True)
-
-        pending = [
-            t for t in AudioTrack.objects.all()
-            if not t.local_path
-            or not (AUDIOS_DIR / Path(t.local_path.name).name).exists()
-        ]
+        tracks = pending_tracks()
         if limit:
-            pending = pending[:limit]
-        self.stdout.write(f"Found {len(pending)} tracks to download")
+            tracks = tracks[:limit]
+        self.stdout.write(f"Found {len(tracks)} tracks to download")
 
-        with httpx.Client(timeout=120, follow_redirects=True) as client:
-            for i, track in enumerate(pending, 1):
-                filename = track.mp3_url.rstrip("/").split("/")[-1]
-                dest = AUDIOS_DIR / filename
+        total = len(tracks)
 
-                if dest.exists():
-                    self.stdout.write(f"[{i}/{len(pending)}] Already exists: {filename}")
-                    track.local_path = f"audios/{filename}"
-                    track.save()
-                    continue
+        def on_progress(track, filename, saved_bytes, error):
+            if error:
+                self.stderr.write(f"  Error {filename}: {error}")
+            elif saved_bytes:
+                self.stdout.write(f"  {filename} ({saved_bytes / (1024*1024):.1f} MB)")
 
-                self.stdout.write(f"[{i}/{len(pending)}] Downloading: {filename}")
+        downloaded, errors = download_tracks(tracks, on_progress=on_progress, delay=delay)
 
-                tmp = dest.with_suffix(".tmp")
-                try:
-                    with client.stream("GET", track.mp3_url) as resp:
-                        resp.raise_for_status()
-                        with open(tmp, "wb") as f:
-                            for chunk in resp.iter_bytes(chunk_size=65536):
-                                f.write(chunk)
-                    tmp.rename(dest)
-                except httpx.HTTPError as e:
-                    self.stderr.write(f"  Error: {e}")
-                    if tmp.exists():
-                        tmp.unlink()
-                    time.sleep(delay)
-                    continue
-
-                track.local_path = f"audios/{filename}"
-                track.save()
-
-                size_mb = dest.stat().st_size / (1024 * 1024)
-                self.stdout.write(f"  Saved ({size_mb:.1f} MB)")
-
-                time.sleep(delay)
-
-        total_done = AudioTrack.objects.filter(local_path__gt="").count()
-        total = AudioTrack.objects.count()
+        from palestras.models import AudioTrack
+        total_done = AudioTrack.objects.exclude(local_path=None).count()
+        total_all = AudioTrack.objects.count()
         self.stdout.write(
-            self.style.SUCCESS(f"Done. Downloaded: {total_done}/{total}")
+            self.style.SUCCESS(f"Done. Downloaded: {total_done}/{total_all}")
         )
