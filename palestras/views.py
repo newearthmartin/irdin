@@ -38,14 +38,18 @@ def authors_list(request):
 
 
 def languages_list(request):
-    languages = (
+    raw = (
         Palestra.objects.exclude(language__isnull=True)
         .exclude(language="")
         .values_list("language", flat=True)
-        .distinct()
-        .order_by("language")
     )
-    return JsonResponse({"languages": list(languages)})
+    langs = set()
+    for val in raw:
+        for lang in val.split(","):
+            lang = lang.strip()
+            if lang:
+                langs.add(lang)
+    return JsonResponse({"languages": sorted(langs)})
 
 
 def palestra_detail(request, slug):
@@ -116,7 +120,10 @@ def search(request):
         qs = qs.filter(authors__slug__in=author_slugs)
 
     if selected_languages:
-        qs = qs.filter(language__in=selected_languages)
+        lang_q = Q()
+        for lang in selected_languages:
+            lang_q |= Q(language__icontains=lang)
+        qs = qs.filter(lang_q)
 
     qs = qs.distinct()
     total = qs.count()
