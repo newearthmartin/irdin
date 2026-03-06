@@ -92,6 +92,9 @@ def search(request):
     author_slugs = request.GET.getlist("author")
     selected_languages = request.GET.getlist("language")
 
+    import sys
+    print(f"DEBUG search: query={query!r} authors={author_slugs} languages={selected_languages}", file=sys.stderr)
+
     if not query and not author_slugs and not selected_languages:
         return JsonResponse({"results": [], "total": 0, "page": 1, "pages": 1})
 
