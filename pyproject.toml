@@ -8,12 +8,16 @@ dependencies = [
     "beautifulsoup4>=4.14.3",
     "pillow>=11.0.0",
     "django>=6.0.2",
-    "faster-whisper>=1.2.1",
-    "groq>=1.0.0",
+    "gunicorn>=25.1.0",
     "httpx>=0.28.1",
     "lxml>=6.0.2",
+]
+
+[project.optional-dependencies]
+transcribe = [
+    "faster-whisper>=1.2.1",
+    "groq>=1.0.0",
     "mlx-whisper>=0.4.3",
     "openai>=2.21.0",
     "pywhispercpp>=1.4.1",
-    "gunicorn>=25.1.0",
 ]
