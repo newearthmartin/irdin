@@ -181,14 +181,24 @@ export default function PalestraDetail() {
         </div>
       )}
 
-      <a
-        href={data.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="original-link"
-      >
-        Ver no site original ↗
-      </a>
+      <div className="links-row">
+        <a
+          href={data.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="original-link"
+        >
+          Ver no site original ↗
+        </a>
+        {q && (
+          <>
+            {" — "}
+            <Link to={`/palestras/${slug}`} className="original-link">
+              Remover destaque de "{q}" ×
+            </Link>
+          </>
+        )}
+      </div>
 
       {data.tracks.length > 0 && (
         <div className="tracks">
