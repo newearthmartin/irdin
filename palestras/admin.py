@@ -32,6 +32,24 @@ class AudioDownloadedFilter(admin.SimpleListFilter):
         return queryset
 
 
+class AudioTranscribedFilter(admin.SimpleListFilter):
+    title = "audio transcribed"
+    parameter_name = "audio_transcribed"
+
+    def lookups(self, request, model_admin):
+        return [
+            ("yes", "Has transcriptions"),
+            ("no", "Not transcribed"),
+        ]
+
+    def queryset(self, request, queryset):
+        if self.value() == "yes":
+            return queryset.filter(tracks__transcribed_on__isnull=False).distinct()
+        if self.value() == "no":
+            return queryset.exclude(tracks__transcribed_on__isnull=False).distinct()
+        return queryset
+
+
 class AudioTrackInline(admin.TabularInline):
     model = AudioTrack
     extra = 0
@@ -41,7 +59,7 @@ class AudioTrackInline(admin.TabularInline):
 @admin.register(Palestra)
 class PalestraAdmin(admin.ModelAdmin):
     list_display = ("title", "slug", "scraped_on", "track_count", "categories")
-    list_filter = ("scraped_on", "language", "categories", "media_format", AudioDownloadedFilter)
+    list_filter = ("scraped_on", "language", "categories", "media_format", AudioDownloadedFilter, AudioTranscribedFilter)
     search_fields = ("title", "slug", "sku", "description")
     filter_horizontal = ("authors",)
     inlines = [AudioTrackInline]
@@ -77,7 +95,7 @@ class AudioTrackAdmin(admin.ModelAdmin):
     list_display = ("name", "palestra", "local_path", "transcribed_on")
     list_filter = ("transcribed_on",)
     search_fields = ("name", "palestra__title")
-    actions = ["clear_downloaded_file"]
+    actions = ["clear_downloaded_file", "clear_transcription"]
 
     @admin.action(description="Clear downloaded file")
     def clear_downloaded_file(self, request, queryset):
@@ -88,3 +106,13 @@ class AudioTrackAdmin(admin.ModelAdmin):
             track.save()
             count += 1
         self.message_user(request, f"Cleared {count} downloaded file(s).")
+
+    @admin.action(description="Clear transcription")
+    def clear_transcription(self, request, queryset):
+        count = queryset.exclude(transcribed_on=None).update(
+            transcription="",
+            transcription_timecoded="",
+            transcription_method="",
+            transcribed_on=None,
+        )
+        self.message_user(request, f"Cleared transcription for {count} track(s).")

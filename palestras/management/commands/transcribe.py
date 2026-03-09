@@ -9,6 +9,23 @@ from palestras.models import AudioTrack
 
 TRANSCRIPTIONS_DIR = Path(settings.BASE_DIR) / "transcriptions"
 
+LANGUAGE_MAP = {
+    "português": "pt",
+    "espanhol": "es",
+    "inglês": "en",
+    "francês": "fr",
+    "italiano": "it",
+    "alemão": "de",
+}
+
+
+def _palestra_language(track):
+    """Return ISO language code for the track's palestra, or None for auto-detect."""
+    lang = track.palestra.language.strip() if track.palestra.language else ""
+    if not lang or "," in lang:
+        return None
+    return LANGUAGE_MAP.get(lang.lower())
+
 
 MLX_MODEL_MAP = {
     "large-v3": "mlx-community/whisper-large-v3-mlx",
@@ -54,8 +71,8 @@ class Command(BaseCommand):
             return model_name
         return MLX_MODEL_MAP.get(model_name, f"mlx-community/whisper-{model_name}-mlx")
 
-    def _transcribe_faster_whisper(self, audio_path, model, model_name):
-        segments, info = model.transcribe(str(audio_path), language="pt")
+    def _transcribe_faster_whisper(self, audio_path, model, model_name, language=None):
+        segments, info = model.transcribe(str(audio_path), language=language)
         duration = info.duration
         if duration:
             seg_bar = tqdm(
@@ -84,11 +101,11 @@ class Command(BaseCommand):
         duration_secs = info.duration
         return plain_text, timecoded_text, duration_secs
 
-    def _transcribe_mlx_whisper(self, audio_path, model_name):
+    def _transcribe_mlx_whisper(self, audio_path, model_name, language=None):
         import mlx_whisper
 
         result = mlx_whisper.transcribe(
-            str(audio_path), language="pt", path_or_hf_repo=model_name
+            str(audio_path), language=language, path_or_hf_repo=model_name
         )
         segments = result.get("segments", [])
         plain_parts = []
@@ -122,18 +139,21 @@ class Command(BaseCommand):
         duration_secs = segments[-1].t1 / 100 if segments else 0
         return plain_text, timecoded_text, duration_secs
 
-    def _transcribe_groq(self, audio_path, model_name):
+    def _transcribe_groq(self, audio_path, model_name, language=None):
         from groq import Groq
 
         client = Groq()
+        kwargs = dict(
+            file=None,
+            model=model_name,
+            response_format="verbose_json",
+            timestamp_granularities=["segment"],
+        )
+        if language:
+            kwargs["language"] = language
         with open(audio_path, "rb") as audio_file:
-            response = client.audio.transcriptions.create(
-                file=audio_file,
-                model=model_name,
-                language="pt",
-                response_format="verbose_json",
-                timestamp_granularities=["segment"],
-            )
+            kwargs["file"] = audio_file
+            response = client.audio.transcriptions.create(**kwargs)
         segments = response.segments or []
         plain_parts = []
         timecoded_parts = []
@@ -148,18 +168,21 @@ class Command(BaseCommand):
         duration_secs = segments[-1]["end"] if segments else 0
         return plain_text, timecoded_text, duration_secs
 
-    def _transcribe_openai(self, audio_path, model_name):
+    def _transcribe_openai(self, audio_path, model_name, language=None):
         from openai import OpenAI
 
         client = OpenAI()
+        kwargs = dict(
+            file=None,
+            model=model_name,
+            response_format="verbose_json",
+            timestamp_granularities=["segment"],
+        )
+        if language:
+            kwargs["language"] = language
         with open(audio_path, "rb") as audio_file:
-            response = client.audio.transcriptions.create(
-                file=audio_file,
-                model=model_name,
-                language="pt",
-                response_format="verbose_json",
-                timestamp_granularities=["segment"],
-            )
+            kwargs["file"] = audio_file
+            response = client.audio.transcriptions.create(**kwargs)
         segments = response.segments or []
         plain_parts = []
         timecoded_parts = []
@@ -210,7 +233,7 @@ class Command(BaseCommand):
             from pywhispercpp.model import Model
 
             self.stdout.write(f"Loading model {model_name}...")
-            preloaded_model = Model(model_name, language="pt")
+            preloaded_model = Model(model_name)
             self.stdout.write("Model loaded.")
         elif backend == "groq":
             self.stdout.write(f"Using Groq API with model {model_name}")
@@ -229,10 +252,11 @@ class Command(BaseCommand):
                 tqdm.write(f"File not found: {audio_path}")
                 continue
 
+            language = _palestra_language(track)
             try:
                 if backend == "faster-whisper":
                     plain_text, timecoded_text, duration_secs = (
-                        self._transcribe_faster_whisper(audio_path, preloaded_model, model_name)
+                        self._transcribe_faster_whisper(audio_path, preloaded_model, model_name, language)
                     )
                 elif backend == "whisper-cpp":
                     plain_text, timecoded_text, duration_secs = (
@@ -240,15 +264,15 @@ class Command(BaseCommand):
                     )
                 elif backend == "groq":
                     plain_text, timecoded_text, duration_secs = (
-                        self._transcribe_groq(audio_path, model_name)
+                        self._transcribe_groq(audio_path, model_name, language)
                     )
                 elif backend == "openai":
                     plain_text, timecoded_text, duration_secs = (
-                        self._transcribe_openai(audio_path, model_name)
+                        self._transcribe_openai(audio_path, model_name, language)
                     )
                 else:
                     plain_text, timecoded_text, duration_secs = (
-                        self._transcribe_mlx_whisper(audio_path, model_name)
+                        self._transcribe_mlx_whisper(audio_path, model_name, language)
                     )
             except Exception as e:
                 tqdm.write(f"Error on {track.name}: {e}")
