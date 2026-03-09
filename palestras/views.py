@@ -5,9 +5,14 @@ from .models import Author, Palestra
 
 
 def _author_data(author):
+    photo = str(author.photo) if author.photo else None
+    if photo:
+        photo_url = photo if photo.startswith('/') else f"/media/{photo}"
+    else:
+        photo_url = None
     return {
         "name": author.name,
-        "photo_url": f"/media/{author.photo}" if author.photo else None,
+        "photo_url": photo_url,
     }
 
 
