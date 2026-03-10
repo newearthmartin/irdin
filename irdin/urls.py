@@ -23,7 +23,7 @@ from django.contrib import admin
 from django.http import FileResponse, Http404, HttpResponse, StreamingHttpResponse
 from django.urls import path, re_path
 
-from palestras.views import authors_list, categories_list, languages_list, palestra_detail, search
+from palestras.views import authors_list, categories_list, languages_list, palestra_detail, palestra_page, search
 
 FRONTEND_INDEX = settings.BASE_DIR / "static" / "frontend" / "index.html"
 
@@ -72,6 +72,10 @@ urlpatterns = [
 
 if settings.DEBUG:
     urlpatterns += [path('media/<path:path>', serve_media)]
+
+urlpatterns += [
+    path('palestras/<slug:slug>', palestra_page),
+]
 
 # Catch-all: serve the React app for any non-API/admin/static path
 urlpatterns += [
