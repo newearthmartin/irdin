@@ -1,8 +1,12 @@
+from django.conf import settings
 from django.db.models import Q
-from django.http import JsonResponse, Http404
+from django.http import HttpResponse, JsonResponse, Http404
+from django.utils.html import escape
 
 from .db_functions import strip_accents
 from .models import Author, Palestra
+
+FRONTEND_INDEX = settings.BASE_DIR / "static" / "frontend" / "index.html"
 
 
 def _author_data(author):
@@ -108,6 +112,31 @@ def palestra_detail(request, slug):
         "authors": [_author_data(a) for a in p.authors.all()],
         "tracks": tracks,
     })
+
+
+def palestra_page(request, slug):
+    """Serve index.html with Open Graph meta tags for link previews."""
+    try:
+        p = Palestra.objects.prefetch_related("authors").get(slug=slug)
+    except Palestra.DoesNotExist:
+        with open(FRONTEND_INDEX) as f:
+            return HttpResponse(f.read(), content_type="text/html")
+
+    author_names = ", ".join(a.name for a in p.authors.all())
+    og_title = f"{author_names} - {p.title}" if author_names else p.title
+    description = p.description[:200].strip() if p.description else ""
+
+    og_tags = f"""
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="{escape(og_title)}" />
+    <meta property="og:description" content="{escape(description)}" />
+    <meta property="og:url" content="{escape(request.build_absolute_uri())}" />"""
+
+    with open(FRONTEND_INDEX) as f:
+        html = f.read()
+
+    html = html.replace("</head>", og_tags + "\n  </head>", 1)
+    return HttpResponse(html, content_type="text/html")
 
 
 def search(request):
