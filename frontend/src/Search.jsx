@@ -5,9 +5,8 @@ import { highlightText, snippetAround } from "./textUtils.jsx";
 const ALL_FIELDS = [
   { key: "title", label: "Título" },
   { key: "description", label: "Descrição" },
-  { key: "categories", label: "Categorias" },
+  { key: "transcriptions", label: "Transcrição" },
   { key: "tags", label: "Tags" },
-  { key: "transcriptions", label: "Transcrições" },
 ];
 
 function loadFields() {
@@ -29,6 +28,14 @@ function loadSelectedAuthors() {
 function loadSelectedLanguages() {
   try {
     const stored = localStorage.getItem("searchLanguages");
+    if (stored) return JSON.parse(stored);
+  } catch {}
+  return [];
+}
+
+function loadSelectedCategories() {
+  try {
+    const stored = localStorage.getItem("searchCategories");
     if (stored) return JSON.parse(stored);
   } catch {}
   return [];
@@ -93,13 +100,18 @@ export default function Search() {
   const initialLanguages = searchParams.getAll("language").length > 0
     ? searchParams.getAll("language")
     : loadSelectedLanguages();
+  const initialCategories = searchParams.getAll("category").length > 0
+    ? searchParams.getAll("category")
+    : loadSelectedCategories();
 
   const [query, setQuery] = useState(initialQ);
   const [fields, setFields] = useState(initialFields);
   const [selectedAuthors, setSelectedAuthors] = useState(initialAuthors);
   const [selectedLanguages, setSelectedLanguages] = useState(initialLanguages);
+  const [selectedCategories, setSelectedCategories] = useState(initialCategories);
   const [authorsList, setAuthorsList] = useState([]);
   const [languagesList, setLanguagesList] = useState([]);
+  const [categoriesList, setCategoriesList] = useState([]);
   const [results, setResults] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(initialPage);
@@ -115,15 +127,19 @@ export default function Search() {
     fetch("/api/languages")
       .then((r) => r.json())
       .then((data) => setLanguagesList(data.languages.map((l) => ({ value: l, label: l }))));
+    fetch("/api/categories")
+      .then((r) => r.json())
+      .then((data) => setCategoriesList(data.categories.map((c) => ({ value: c, label: c }))));
   }, []);
 
-  function updateUrl(q, p, f, authors, languages) {
+  function updateUrl(q, p, f, authors, languages, categories) {
     const params = new URLSearchParams();
     if (q.trim()) params.set("q", q);
     if (p > 1) params.set("page", String(p));
     f.forEach((field) => params.append("fields", field));
     authors.forEach((slug) => params.append("author", slug));
     languages.forEach((lang) => params.append("language", lang));
+    categories.forEach((c) => params.append("category", c));
     setSearchParams(params, { replace: true });
   }
 
@@ -151,23 +167,32 @@ export default function Search() {
     });
   }
 
-  function doSearch(q, p = 1, f = fields, authors = selectedAuthors, languages = selectedLanguages) {
-    if (!q.trim() && authors.length === 0 && languages.length === 0) {
+  function toggleCategory(cat) {
+    setSelectedCategories((prev) => {
+      const next = prev.includes(cat) ? prev.filter((s) => s !== cat) : [...prev, cat];
+      localStorage.setItem("searchCategories", JSON.stringify(next));
+      return next;
+    });
+  }
+
+  function doSearch(q, p = 1, f = fields, authors = selectedAuthors, languages = selectedLanguages, categories = selectedCategories) {
+    if (!q.trim() && authors.length === 0 && languages.length === 0 && categories.length === 0) {
       setResults([]);
       setTotal(0);
       setPage(1);
       setPages(1);
-      updateUrl("", 1, f, authors, languages);
+      updateUrl("", 1, f, authors, languages, categories);
       return;
     }
     setLoading(true);
-    updateUrl(q, p, f, authors, languages);
+    updateUrl(q, p, f, authors, languages, categories);
     const params = new URLSearchParams();
     params.set("q", q);
     params.set("page", p);
     f.forEach((field) => params.append("fields", field));
     authors.forEach((slug) => params.append("author", slug));
     languages.forEach((lang) => params.append("language", lang));
+    categories.forEach((c) => params.append("category", c));
     fetch(`/api/search?${params}`)
       .then((r) => r.json())
       .then((data) => {
@@ -182,15 +207,15 @@ export default function Search() {
   useEffect(() => {
     if (initialLoad.current) {
       initialLoad.current = false;
-      doSearch(query, initialPage, fields, selectedAuthors, selectedLanguages);
+      doSearch(query, initialPage, fields, selectedAuthors, selectedLanguages, selectedCategories);
       return;
     }
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
-      doSearch(query, 1, fields, selectedAuthors, selectedLanguages);
+      doSearch(query, 1, fields, selectedAuthors, selectedLanguages, selectedCategories);
     }, 300);
     return () => clearTimeout(timerRef.current);
-  }, [query, fields, selectedAuthors, selectedLanguages]);
+  }, [query, fields, selectedAuthors, selectedLanguages, selectedCategories]);
 
   const words = query.trim().split(/\s+/).filter(Boolean);
 
@@ -231,11 +256,18 @@ export default function Search() {
           selected={selectedLanguages}
           onToggle={toggleLanguage}
         />
+        <CheckboxDropdown
+          label="Categoria"
+          pluralLabel="Categorias"
+          items={categoriesList}
+          selected={selectedCategories}
+          onToggle={toggleCategory}
+        />
       </div>
 
       {loading && <p className="status">Buscando…</p>}
 
-      {!loading && (query.trim() || selectedAuthors.length > 0 || selectedLanguages.length > 0) && (
+      {!loading && (query.trim() || selectedAuthors.length > 0 || selectedLanguages.length > 0 || selectedCategories.length > 0) && (
         <p className="status">
           {total} resultado{total !== 1 ? "s" : ""} encontrado
           {total !== 1 ? "s" : ""}

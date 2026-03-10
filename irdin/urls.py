@@ -23,7 +23,7 @@ from django.contrib import admin
 from django.http import FileResponse, Http404, HttpResponse, StreamingHttpResponse
 from django.urls import path, re_path
 
-from palestras.views import authors_list, languages_list, palestra_detail, search
+from palestras.views import authors_list, categories_list, languages_list, palestra_detail, search
 
 FRONTEND_INDEX = settings.BASE_DIR / "static" / "frontend" / "index.html"
 
@@ -65,6 +65,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/authors', authors_list),
     path('api/languages', languages_list),
+    path('api/categories', categories_list),
     path('api/search', search),
     path('api/palestras/<slug:slug>', palestra_detail),
 ]

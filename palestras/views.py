@@ -58,6 +58,25 @@ def languages_list(request):
     return JsonResponse({"languages": sorted(langs)})
 
 
+def _split_csv_field(field_name):
+    raw = (
+        Palestra.objects.exclude(**{f"{field_name}__isnull": True})
+        .exclude(**{field_name: ""})
+        .values_list(field_name, flat=True)
+    )
+    values = set()
+    for val in raw:
+        for item in val.split(","):
+            item = item.strip()
+            if item:
+                values.add(item)
+    return sorted(values)
+
+
+def categories_list(request):
+    return JsonResponse({"categories": _split_csv_field("categories")})
+
+
 def palestra_detail(request, slug):
     try:
         p = Palestra.objects.prefetch_related("authors", "tracks").get(slug=slug)
@@ -97,11 +116,9 @@ def search(request):
     per_page = 20
     author_slugs = request.GET.getlist("author")
     selected_languages = request.GET.getlist("language")
+    selected_categories = request.GET.getlist("category")
 
-    import sys
-    print(f"DEBUG search: query={query!r} authors={author_slugs} languages={selected_languages}", file=sys.stderr)
-
-    if not query and not author_slugs and not selected_languages:
+    if not query and not author_slugs and not selected_languages and not selected_categories:
         return JsonResponse({"results": [], "total": 0, "page": 1, "pages": 1})
 
     words = query.split() if query else []
@@ -141,6 +158,13 @@ def search(request):
             if {p.strip() for p in raw.split(",")} & selected_set
         }
         qs = qs.filter(language__in=matching_raw) if matching_raw else qs.none()
+
+    for selected, field in ((selected_categories, "categories"),):
+        if selected:
+            selected_set = set(selected)
+            all_raw = Palestra.objects.exclude(**{f"{field}__isnull": True}).exclude(**{field: ""}).values_list(field, flat=True).distinct()
+            matching_raw = {raw for raw in all_raw if {v.strip() for v in raw.split(",")} & selected_set}
+            qs = qs.filter(**{f"{field}__in": matching_raw}) if matching_raw else qs.none()
 
     qs = qs.distinct()
     total = qs.count()
