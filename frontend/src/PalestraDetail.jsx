@@ -30,6 +30,7 @@ function pauseOtherPlayers(current) {
 function TrackPlayer({ track, words, initialTime, onSeek, getShareUrl, onCopy }) {
   const audioRef = useRef(null);
   const trackSectionRef = useRef(null);
+  const transcriptionRef = useRef(null);
   const lineElemsRef = useRef([]);
   const [copiedIndex, setCopiedIndex] = useState(null);
 
@@ -58,13 +59,32 @@ function TrackPlayer({ track, words, initialTime, onSeek, getShareUrl, onCopy })
 
   const initialTimeRef = useRef(initialTime);
 
-  // Scroll to the highlighted line on initial load
+  // Scroll page to the highlighted line on initial load
   useEffect(() => {
     if (initialTime == null) return;
     const lineEl = activeIndex >= 0 ? lineElemsRef.current[activeIndex] : null;
     const target = lineEl || trackSectionRef.current;
     target?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep active line visible within the transcript box during playback
+  useEffect(() => {
+    if (activeIndex < 0) return;
+    const container = transcriptionRef.current;
+    const lineEl = lineElemsRef.current[activeIndex];
+    if (!container || !lineEl) return;
+    const cRect = container.getBoundingClientRect();
+    const lRect = lineEl.getBoundingClientRect();
+    const nextEl = lineElemsRef.current[activeIndex + 1];
+    const nextRect = nextEl ? nextEl.getBoundingClientRect() : null;
+    if (nextRect && nextRect.bottom > cRect.bottom) {
+      // Next sentence is out of view — scroll current to top
+      container.scrollTo({ top: container.scrollTop + lRect.top - cRect.top, behavior: "smooth" });
+    } else if (lRect.top < cRect.top) {
+      // Current sentence scrolled above — bring it back
+      container.scrollTo({ top: container.scrollTop - (cRect.top - lRect.top), behavior: "smooth" });
+    }
+  }, [activeIndex]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -122,7 +142,7 @@ function TrackPlayer({ track, words, initialTime, onSeek, getShareUrl, onCopy })
         className="track-audio"
       />
       {lines.length > 0 && (
-        <div className="transcription">
+        <div className="transcription" ref={transcriptionRef}>
           {lines.map((line, i) => (
             <div
               key={i}
