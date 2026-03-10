@@ -1,6 +1,7 @@
 from django.db.models import Q
 from django.http import JsonResponse, Http404
 
+from .db_functions import strip_accents
 from .models import Author, Palestra
 
 
@@ -18,10 +19,10 @@ def _author_data(author):
 
 def _find_snippet(text, words, max_len=200):
     """Return a snippet of text around the first matching word."""
-    lower = text.lower()
+    normalized = strip_accents(text)
     best_idx = -1
     for w in words:
-        idx = lower.find(w.lower())
+        idx = normalized.find(strip_accents(w))
         if idx != -1:
             best_idx = idx
             break
@@ -107,11 +108,11 @@ def search(request):
     fields = request.GET.getlist("fields")
 
     FIELD_MAP = {
-        "title": "title__icontains",
-        "description": "description__icontains",
-        "categories": "categories__icontains",
-        "tags": "tags__icontains",
-        "transcriptions": "tracks__transcription__icontains",
+        "title": "title__unaccent_icontains",
+        "description": "description__unaccent_icontains",
+        "categories": "categories__unaccent_icontains",
+        "tags": "tags__unaccent_icontains",
+        "transcriptions": "tracks__transcription__unaccent_icontains",
     }
 
     active_fields = {k: v for k, v in FIELD_MAP.items() if k in fields} if fields else FIELD_MAP
