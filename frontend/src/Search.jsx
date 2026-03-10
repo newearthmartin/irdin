@@ -1,35 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-
-function highlightText(text, words) {
-  if (!words.length || !text) return text;
-  const escaped = words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  const regex = new RegExp(`(${escaped.join("|")})`, "gi");
-  const parts = text.split(regex);
-  return parts.map((part, i) =>
-    regex.test(part) ? <mark key={i}>{part}</mark> : part
-  );
-}
-
-function snippetAround(text, words, maxLen = 300) {
-  if (!text) return "";
-  if (text.length <= maxLen) return text;
-  const lower = text.toLowerCase();
-  let bestIdx = 0;
-  for (const w of words) {
-    const idx = lower.indexOf(w.toLowerCase());
-    if (idx !== -1) {
-      bestIdx = idx;
-      break;
-    }
-  }
-  const start = Math.max(0, bestIdx - Math.floor(maxLen / 2));
-  const end = Math.min(text.length, start + maxLen);
-  let snippet = text.slice(start, end);
-  if (start > 0) snippet = "…" + snippet;
-  if (end < text.length) snippet = snippet + "…";
-  return snippet;
-}
+import { highlightText, snippetAround } from "./textUtils.jsx";
 
 const ALL_FIELDS = [
   { key: "title", label: "Título" },

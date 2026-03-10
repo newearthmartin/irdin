@@ -1,16 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import "./PalestraDetail.css";
-
-function highlightText(text, words) {
-  if (!words.length || !text) return text;
-  const escaped = words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  const regex = new RegExp(`(${escaped.join("|")})`, "gi");
-  const parts = text.split(regex);
-  return parts.map((part, i) =>
-    regex.test(part) ? <mark key={i}>{part}</mark> : part
-  );
-}
+import { highlightText } from "./textUtils.jsx";
 
 function parseTimecoded(text) {
   if (!text) return [];
