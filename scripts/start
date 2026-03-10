@@ -1,0 +1,8 @@
+#!/bin/bash
+if /usr/sbin/ss -tlnp | grep -q ':24977'; then
+    echo "irdin is already running"
+    exit 0
+fi
+cd /home/multilanguage/apps/irdin/repo
+echo "starting irdin..."
+exec /home/multilanguage/.local/bin/uv run gunicorn --daemon  --workers 1   --bind 0.0.0.0:24977   --timeout 120   --access-logfile /home/multilanguage/apps/irdin/access.log   --error-logfile /home/multilanguage/apps/irdin/error.log   irdin.wsgi:application

@@ -1,0 +1,11 @@
+#!/bin/bash
+pkill -f 'gunicorn.*irdin.wsgi' || true
+
+# Wait for the port to free up (up to 15s)
+for i in $(seq 1 15); do
+    ss -tlnp | grep -q ':24977' || exit 0
+    sleep 1
+done
+
+# Force kill if still running
+pkill -9 -f 'gunicorn.*irdin.wsgi' || true
