@@ -267,17 +267,14 @@ export default function Search() {
                       ? <img src={a.photo_url} alt={a.name} className="author-avatar" />
                       : <span className="author-avatar author-initial">{a.name[0]}</span>
                     }
-                    {highlightText(a.name, words)}
+                    {a.name}
                   </span>
                 ))}
               </div>
             )}
             {(r.categories || r.tags || r.language) && (
               <p className="meta tags">
-                {highlightText(
-                  [r.language, r.categories, r.tags].filter(Boolean).join(" · "),
-                  words
-                )}
+                {[r.language, r.categories, r.tags].filter(Boolean).join(" · ")}
               </p>
             )}
             {r.description && (
