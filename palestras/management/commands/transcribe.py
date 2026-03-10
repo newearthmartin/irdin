@@ -72,7 +72,12 @@ class Command(BaseCommand):
         return MLX_MODEL_MAP.get(model_name, f"mlx-community/whisper-{model_name}-mlx")
 
     def _transcribe_faster_whisper(self, audio_path, model, model_name, language=None):
-        segments, info = model.transcribe(str(audio_path), language=language)
+        segments, info = model.transcribe(
+            str(audio_path),
+            language=language,
+            condition_on_previous_text=False,
+            vad_filter=True,
+        )
         duration = info.duration
         if duration:
             seg_bar = tqdm(
@@ -105,7 +110,10 @@ class Command(BaseCommand):
         import mlx_whisper
 
         result = mlx_whisper.transcribe(
-            str(audio_path), language=language, path_or_hf_repo=model_name
+            str(audio_path),
+            language=language,
+            path_or_hf_repo=model_name,
+            condition_on_previous_text=False,
         )
         segments = result.get("segments", [])
         plain_parts = []
