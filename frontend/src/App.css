@@ -51,10 +51,9 @@ body {
 }
 
 .theme-toggle {
-  position: fixed;
+  position: absolute;
   top: 0.75rem;
   right: 0.75rem;
-  z-index: 100;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -77,6 +76,7 @@ body {
   max-width: 800px;
   margin: 0 auto;
   padding: 2rem 1rem;
+  position: relative;
 }
 
 @media (max-width: 600px) {

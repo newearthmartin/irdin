@@ -87,7 +87,7 @@ function CheckboxDropdown({ label, pluralLabel, items, selected, onToggle }) {
   );
 }
 
-export default function Search() {
+export default function Search({ toggle }) {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQ = searchParams.get("q") || "";
   const initialPage = parseInt(searchParams.get("page"), 10) || 1;
@@ -221,6 +221,7 @@ export default function Search() {
 
   return (
     <div className="container">
+      {toggle}
       <h1>IRDIN — Pesquisa de Palestras</h1>
       <input
         type="text"

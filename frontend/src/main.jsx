@@ -45,14 +45,19 @@ function ThemeToggle() {
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
+function App() {
+  return (
     <BrowserRouter>
-      <ThemeToggle />
       <Routes>
-        <Route path="/" element={<Search />} />
-        <Route path="/palestras/:slug" element={<PalestraDetail />} />
+        <Route path="/" element={<Search toggle={<ThemeToggle />} />} />
+        <Route path="/palestras/:slug" element={<PalestraDetail toggle={<ThemeToggle />} />} />
       </Routes>
     </BrowserRouter>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(
+  <React.StrictMode>
+    <App />
   </React.StrictMode>
 );

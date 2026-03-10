@@ -178,7 +178,7 @@ function TrackPlayer({ track, words, initialTime, onSeek, getShareUrl, onCopy })
   );
 }
 
-export default function PalestraDetail() {
+export default function PalestraDetail({ toggle }) {
   const { slug } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const q = searchParams.get("q") || "";
@@ -247,6 +247,7 @@ export default function PalestraDetail() {
   return (
     <>
     <div className="container detail-page">
+      {toggle}
       <Link to={q ? `/?q=${encodeURIComponent(q)}` : "/"} className="back-link">
         ← Voltar à pesquisa
       </Link>
