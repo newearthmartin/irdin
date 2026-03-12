@@ -50,6 +50,9 @@ class Command(BaseCommand):
             "--limit", type=int, default=0, help="Max tracks to transcribe (0=all)"
         )
         parser.add_argument(
+            "--offset", type=int, default=0, help="Skip the first N pending tracks (for parallel runs)"
+        )
+        parser.add_argument(
             "--model", type=str, default=None, help="Whisper model name"
         )
         parser.add_argument(
@@ -207,6 +210,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         limit = options["limit"]
+        offset = options["offset"]
         backend = options["backend"]
         model_name = options["model"] or DEFAULT_MODELS[backend]
         retranscribe = options["retranscribe"]
@@ -223,6 +227,8 @@ class Command(BaseCommand):
             qs = qs.filter(transcribed_on__isnull=True)
 
         pending = [t for t in qs if Path(settings.MEDIA_ROOT / t.local_path.name).exists()]
+        if offset:
+            pending = pending[offset:]
         if limit:
             pending = pending[:limit]
         self.stdout.write(f"Found {len(pending)} tracks to transcribe with {method}")
