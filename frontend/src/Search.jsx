@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { highlightText, snippetAround } from "./textUtils.jsx";
+import ThemeToggle from "./ThemeToggle.jsx";
 
 const ALL_FIELDS = [
   { key: "title", label: "Título" },
@@ -87,7 +88,7 @@ function CheckboxDropdown({ label, pluralLabel, items, selected, onToggle }) {
   );
 }
 
-export default function Search({ toggle }) {
+export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQ = searchParams.get("q") || "";
   const initialPage = parseInt(searchParams.get("page"), 10) || 1;
@@ -220,8 +221,14 @@ export default function Search({ toggle }) {
   const words = query.trim().split(/\s+/).filter(Boolean);
 
   return (
+    <>
+    <div className="topbar">
+      <div className="topbar-inner">
+        <span />
+      </div>
+      <ThemeToggle />
+    </div>
     <div className="container">
-      {toggle}
       <h1>IRDIN — Pesquisa de Palestras</h1>
       <input
         type="text"
@@ -351,5 +358,6 @@ export default function Search({ toggle }) {
         </div>
       )}
     </div>
+    </>
   );
 }

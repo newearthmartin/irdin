@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
 import "./PalestraDetail.css";
 import { highlightText } from "./textUtils.jsx";
+import ThemeToggle from "./ThemeToggle.jsx";
 
 function parseTimecoded(text) {
   if (!text) return [];
@@ -178,7 +179,7 @@ function TrackPlayer({ track, words, initialTime, onSeek, getShareUrl, onCopy })
   );
 }
 
-export default function PalestraDetail({ toggle }) {
+export default function PalestraDetail() {
   const { slug } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const q = searchParams.get("q") || "";
@@ -227,31 +228,45 @@ export default function PalestraDetail({ toggle }) {
       .catch(() => setError("Palestra não encontrada."));
   }, [slug]);
 
+  const backLink = q ? `/?q=${encodeURIComponent(q)}` : "/";
+
   if (error) {
     return (
-      <div className="container">
-        <p className="status">{error}</p>
-        <Link to="/" className="back-link">← Voltar à pesquisa</Link>
+      <>
+      <div className="topbar">
+        <div className="topbar-inner">
+          <p className="status">{error}</p>
+        </div>
+        <ThemeToggle />
       </div>
+      </>
     );
   }
 
   if (!data) {
     return (
-      <div className="container">
-        <p className="status">Carregando…</p>
+      <>
+      <div className="topbar">
+        <div className="topbar-inner">
+          <p className="status">Carregando…</p>
+        </div>
+        <ThemeToggle />
       </div>
+      </>
     );
   }
 
   return (
     <>
+    <div className="topbar">
+      <div className="topbar-inner">
+        <Link to={backLink} className="back-link">
+          ← Voltar à pesquisa
+        </Link>
+      </div>
+      <ThemeToggle />
+    </div>
     <div className="container detail-page">
-      {toggle}
-      <Link to={q ? `/?q=${encodeURIComponent(q)}` : "/"} className="back-link">
-        ← Voltar à pesquisa
-      </Link>
-
       <h1>{data.title}</h1>
 
       {data.authors.length > 0 && (
