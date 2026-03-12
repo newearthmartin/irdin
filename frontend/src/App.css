@@ -50,10 +50,26 @@ body {
   line-height: 1.5;
 }
 
+.topbar {
+  width: 100%;
+  position: relative;
+  height: 2.75rem;
+}
+
+.topbar-inner {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0.5rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .theme-toggle {
   position: absolute;
-  top: 0.75rem;
+  top: 50%;
   right: 0.75rem;
+  transform: translateY(-50%);
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -75,8 +91,7 @@ body {
 .container {
   max-width: 800px;
   margin: 0 auto;
-  padding: 2rem 1rem;
-  position: relative;
+  padding: 0 1rem 2rem;
 }
 
 @media (max-width: 600px) {
