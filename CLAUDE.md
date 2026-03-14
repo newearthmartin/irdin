@@ -18,6 +18,7 @@ uv run python manage.py scrape_urls        # Phase A: collect product URLs (~198
 uv run python manage.py scrape_products     # Phase B: scrape metadata from each product page
 uv run python manage.py download_audios     # Phase C: download MP3 files
 uv run python manage.py verify_audios       # Check MP3 integrity via HEAD requests
+uv run python manage.py verify_transcriptions  # Sanity-check transcribed tracks
 uv run python manage.py transcribe          # Transcribe audio tracks
 uv run python manage.py extract_concepts    # Extract concepts from transcriptions via Ollama
 
@@ -31,6 +32,10 @@ uv run python manage.py extract_concepts    # Extract concepts from transcriptio
 --backend faster-whisper|mlx-whisper|groq|whisper-cpp|openai  # default: faster-whisper
 --model <name>    # override default model for chosen backend
 --retranscribe    # re-transcribe tracks done with a different method
+
+# verify_transcriptions options
+--no-ffprobe      # skip audio duration checks (faster)
+--method <str>    # filter by transcription_method substring
 ```
 
 ## API Endpoints
