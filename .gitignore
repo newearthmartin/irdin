@@ -21,3 +21,6 @@ transcriptions/
 # Frontend
 frontend/node_modules/
 static/frontend/
+
+# transcription export
+transcriptions_export.json
