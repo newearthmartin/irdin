@@ -179,34 +179,84 @@ class Command(BaseCommand):
         duration_secs = segments[-1]["end"] if segments else 0
         return plain_text, timecoded_text, duration_secs
 
-    def _transcribe_openai(self, audio_path, model_name, language=None):
-        from openai import OpenAI
+    def _split_audio(self, audio_path, chunk_secs=1200, overlap_secs=15):
+        """Split audio into overlapping chunks using ffmpeg, returning (chunk_path, offset_secs) list."""
+        import subprocess
+        import tempfile
 
-        client = OpenAI()
-        kwargs = dict(
-            file=None,
-            model=model_name,
-            response_format="verbose_json",
-            timestamp_granularities=["segment"],
+        probe = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=noprint_wrappers=1:nokey=1", audio_path],
+            capture_output=True, text=True,
         )
-        if language:
-            kwargs["language"] = language
-        with open(audio_path, "rb") as audio_file:
-            kwargs["file"] = audio_file
-            response = client.audio.transcriptions.create(**kwargs)
-        segments = response.segments or []
-        plain_parts = []
-        timecoded_parts = []
-        for seg in segments:
-            text = seg["text"].strip()
-            plain_parts.append(text)
-            h, rem = divmod(int(seg["start"]), 3600)
-            m, s = divmod(rem, 60)
-            timecoded_parts.append(f"[{h:02d}:{m:02d}:{s:02d}] {text}")
-        plain_text = " ".join(plain_parts)
-        timecoded_text = "\n".join(timecoded_parts)
-        duration_secs = segments[-1]["end"] if segments else 0
-        return plain_text, timecoded_text, duration_secs
+        total_secs = float(probe.stdout.strip())
+        tmpdir = tempfile.mkdtemp()
+        chunks = []
+        offset = 0
+        while offset < total_secs:
+            chunk_path = f"{tmpdir}/chunk_{offset:06d}.mp3"
+            subprocess.run(
+                ["ffmpeg", "-y", "-ss", str(offset), "-i", audio_path,
+                 "-t", str(chunk_secs + overlap_secs), "-c", "copy", chunk_path],
+                capture_output=True,
+            )
+            chunks.append((chunk_path, offset))
+            offset += chunk_secs
+        return chunks
+
+    def _transcribe_openai(self, audio_path, model_name, language=None):
+        import os
+        from openai import OpenAI
+        from django.conf import settings
+
+        client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        # gpt-4o-transcribe models don't support verbose_json/timestamp_granularities
+        use_verbose = "whisper" in model_name
+
+        LIMIT = 25 * 1024 * 1024  # 25MB
+        chunk_secs = 1200
+        needs_split = os.path.getsize(audio_path) > LIMIT
+        chunks = self._split_audio(audio_path, chunk_secs=chunk_secs) if needs_split else [(audio_path, 0)]
+
+        all_plain = []
+        all_timecoded = []
+        total_duration = 0
+
+        for i, (chunk_path, chunk_offset) in enumerate(chunks):
+            is_last = i == len(chunks) - 1
+            kwargs = dict(file=None, model=model_name)
+            if use_verbose:
+                kwargs["response_format"] = "verbose_json"
+                kwargs["timestamp_granularities"] = ["segment"]
+            else:
+                kwargs["response_format"] = "json"
+            if language:
+                kwargs["language"] = language
+            with open(chunk_path, "rb") as audio_file:
+                kwargs["file"] = audio_file
+                response = client.audio.transcriptions.create(**kwargs)
+            if use_verbose:
+                segments = response.segments or []
+                for seg in segments:
+                    # For non-final chunks, skip segments in the overlap tail
+                    if not is_last and seg.start >= chunk_secs:
+                        continue
+                    abs_start = chunk_offset + seg.start
+                    text = seg.text.strip()
+                    all_plain.append(text)
+                    h, rem = divmod(int(abs_start), 3600)
+                    m, s = divmod(rem, 60)
+                    all_timecoded.append(f"[{h:02d}:{m:02d}:{s:02d}] {text}")
+                if segments:
+                    total_duration = chunk_offset + segments[-1].end
+            else:
+                all_plain.append(response.text.strip())
+
+        if needs_split:
+            import shutil
+            shutil.rmtree(os.path.dirname(chunks[0][0]), ignore_errors=True)
+
+        return " ".join(all_plain), "\n".join(all_timecoded), total_duration
 
     def handle(self, *args, **options):
         limit = options["limit"]
