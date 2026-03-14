@@ -93,7 +93,7 @@ class AuthorAdmin(admin.ModelAdmin):
 @admin.register(AudioTrack)
 class AudioTrackAdmin(admin.ModelAdmin):
     list_display = ("name", "palestra", "local_path", "transcribed_on")
-    list_filter = ("transcribed_on",)
+    list_filter = ("transcribed_on", "transcription_method")
     search_fields = ("name", "palestra__title")
     actions = ["clear_downloaded_file", "clear_transcription"]
 
