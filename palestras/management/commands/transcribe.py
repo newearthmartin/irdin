@@ -153,31 +153,47 @@ class Command(BaseCommand):
     def _transcribe_groq(self, audio_path, model_name, language=None):
         from groq import Groq
 
-        client = Groq()
-        kwargs = dict(
-            file=None,
-            model=model_name,
-            response_format="verbose_json",
-            timestamp_granularities=["segment"],
-        )
-        if language:
-            kwargs["language"] = language
-        with open(audio_path, "rb") as audio_file:
-            kwargs["file"] = audio_file
-            response = client.audio.transcriptions.create(**kwargs)
-        segments = response.segments or []
-        plain_parts = []
-        timecoded_parts = []
-        for seg in segments:
-            text = seg["text"].strip()
-            plain_parts.append(text)
-            h, rem = divmod(int(seg["start"]), 3600)
-            m, s = divmod(rem, 60)
-            timecoded_parts.append(f"[{h:02d}:{m:02d}:{s:02d}] {text}")
-        plain_text = " ".join(plain_parts)
-        timecoded_text = "\n".join(timecoded_parts)
-        duration_secs = segments[-1]["end"] if segments else 0
-        return plain_text, timecoded_text, duration_secs
+        client = Groq(api_key=settings.GROQ_API_KEY)
+
+        def transcribe_chunk(chunk_path):
+            kwargs = dict(file=None, model=model_name, response_format="verbose_json",
+                          timestamp_granularities=["segment"])
+            if language:
+                kwargs["language"] = language
+            with open(chunk_path, "rb") as f:
+                kwargs["file"] = f
+                response = client.audio.transcriptions.create(**kwargs)
+            return [(seg["start"], seg["end"], seg["text"].strip())
+                    for seg in (response.segments or [])]
+
+        return self._transcribe_chunked(audio_path, 25 * 1024 * 1024, 1200, transcribe_chunk)
+
+    def _transcribe_chunked(self, audio_path, size_limit, chunk_secs, transcribe_chunk_fn):
+        """
+        Split audio if > size_limit bytes and call transcribe_chunk_fn per chunk.
+        transcribe_chunk_fn(chunk_path) -> [(start, end, text), ...]
+        Returns (plain_text, timecoded_text, total_duration_secs).
+        """
+        import os, shutil
+        needs_split = os.path.getsize(audio_path) > size_limit
+        chunks = self._split_audio(audio_path, chunk_secs=chunk_secs) if needs_split else [(audio_path, 0)]
+        all_plain = []
+        all_timecoded = []
+        total_duration = 0
+        for i, (chunk_path, chunk_offset) in enumerate(chunks):
+            is_last = i == len(chunks) - 1
+            for start, end, text in transcribe_chunk_fn(chunk_path):
+                if not is_last and start >= chunk_secs:
+                    continue
+                abs_start = chunk_offset + start
+                all_plain.append(text)
+                h, rem = divmod(int(abs_start), 3600)
+                m, s = divmod(rem, 60)
+                all_timecoded.append(f"[{h:02d}:{m:02d}:{s:02d}] {text}")
+                total_duration = chunk_offset + end
+        if needs_split:
+            shutil.rmtree(os.path.dirname(chunks[0][0]), ignore_errors=True)
+        return " ".join(all_plain), "\n".join(all_timecoded), total_duration
 
     def _split_audio(self, audio_path, chunk_secs=1200, overlap_secs=15):
         """Split audio into overlapping chunks using ffmpeg, returning (chunk_path, offset_secs) list."""
@@ -207,56 +223,41 @@ class Command(BaseCommand):
     def _transcribe_openai(self, audio_path, model_name, language=None):
         import os
         from openai import OpenAI
-        from django.conf import settings
 
         client = OpenAI(api_key=settings.OPENAI_API_KEY)
         # gpt-4o-transcribe models don't support verbose_json/timestamp_granularities
         use_verbose = "whisper" in model_name
 
-        LIMIT = 25 * 1024 * 1024  # 25MB
-        chunk_secs = 1200
-        needs_split = os.path.getsize(audio_path) > LIMIT
-        chunks = self._split_audio(audio_path, chunk_secs=chunk_secs) if needs_split else [(audio_path, 0)]
+        if use_verbose:
+            def transcribe_chunk(chunk_path):
+                kwargs = dict(file=None, model=model_name, response_format="verbose_json",
+                              timestamp_granularities=["segment"])
+                if language:
+                    kwargs["language"] = language
+                with open(chunk_path, "rb") as f:
+                    kwargs["file"] = f
+                    response = client.audio.transcriptions.create(**kwargs)
+                return [(seg.start, seg.end, seg.text.strip())
+                        for seg in (response.segments or [])]
 
-        all_plain = []
-        all_timecoded = []
-        total_duration = 0
-
-        for i, (chunk_path, chunk_offset) in enumerate(chunks):
-            is_last = i == len(chunks) - 1
-            kwargs = dict(file=None, model=model_name)
-            if use_verbose:
-                kwargs["response_format"] = "verbose_json"
-                kwargs["timestamp_granularities"] = ["segment"]
-            else:
-                kwargs["response_format"] = "json"
-            if language:
-                kwargs["language"] = language
-            with open(chunk_path, "rb") as audio_file:
-                kwargs["file"] = audio_file
-                response = client.audio.transcriptions.create(**kwargs)
-            if use_verbose:
-                segments = response.segments or []
-                for seg in segments:
-                    # For non-final chunks, skip segments in the overlap tail
-                    if not is_last and seg.start >= chunk_secs:
-                        continue
-                    abs_start = chunk_offset + seg.start
-                    text = seg.text.strip()
-                    all_plain.append(text)
-                    h, rem = divmod(int(abs_start), 3600)
-                    m, s = divmod(rem, 60)
-                    all_timecoded.append(f"[{h:02d}:{m:02d}:{s:02d}] {text}")
-                if segments:
-                    total_duration = chunk_offset + segments[-1].end
-            else:
+            return self._transcribe_chunked(audio_path, 25 * 1024 * 1024, 1200, transcribe_chunk)
+        else:
+            LIMIT = 25 * 1024 * 1024
+            needs_split = os.path.getsize(audio_path) > LIMIT
+            chunks = self._split_audio(audio_path, chunk_secs=1200) if needs_split else [(audio_path, 0)]
+            all_plain = []
+            for chunk_path, _ in chunks:
+                kwargs = dict(file=None, model=model_name, response_format="json")
+                if language:
+                    kwargs["language"] = language
+                with open(chunk_path, "rb") as f:
+                    kwargs["file"] = f
+                    response = client.audio.transcriptions.create(**kwargs)
                 all_plain.append(response.text.strip())
-
-        if needs_split:
-            import shutil
-            shutil.rmtree(os.path.dirname(chunks[0][0]), ignore_errors=True)
-
-        return " ".join(all_plain), "\n".join(all_timecoded), total_duration
+            if needs_split:
+                import shutil
+                shutil.rmtree(os.path.dirname(chunks[0][0]), ignore_errors=True)
+            return " ".join(all_plain), "", 0
 
     def handle(self, *args, **options):
         limit = options["limit"]
