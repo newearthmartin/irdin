@@ -219,7 +219,7 @@ def search(request):
                         {"track_name": track.name, "snippet": snippet}
                     )
             if search_track_name and not has_transcription_snippet and words and all(
-                word.lower() in track.name.lower() for word in words
+                strip_accents(word.lower()) in strip_accents(track.name.lower()) for word in words
             ):
                 matching_track_names.append(track.name)
 
