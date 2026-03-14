@@ -151,7 +151,9 @@ class Command(BaseCommand):
         return plain_text, timecoded_text, duration_secs
 
     def _transcribe_groq(self, audio_path, model_name, language=None):
-        from groq import Groq
+        import re
+        import time
+        from groq import Groq, RateLimitError
 
         client = Groq(api_key=settings.GROQ_API_KEY)
 
@@ -160,11 +162,23 @@ class Command(BaseCommand):
                           timestamp_granularities=["segment"])
             if language:
                 kwargs["language"] = language
-            with open(chunk_path, "rb") as f:
-                kwargs["file"] = f
-                response = client.audio.transcriptions.create(**kwargs)
-            return [(seg["start"], seg["end"], seg["text"].strip())
-                    for seg in (response.segments or [])]
+            while True:
+                try:
+                    with open(chunk_path, "rb") as f:
+                        kwargs["file"] = f
+                        response = client.audio.transcriptions.create(**kwargs)
+                    return [(seg["start"], seg["end"], seg["text"].strip())
+                            for seg in (response.segments or [])]
+                except RateLimitError as e:
+                    msg = str(e)
+                    m = re.search(r"try again in (\d+)m(\d+)s", msg)
+                    if m:
+                        wait = int(m.group(1)) * 60 + int(m.group(2)) + 5
+                    else:
+                        m = re.search(r"try again in (\d+)s", msg)
+                        wait = int(m.group(1)) + 5 if m else 60
+                    tqdm.write(f"  Rate limited, waiting {wait}s...")
+                    time.sleep(wait)
 
         return self._transcribe_chunked(audio_path, 25 * 1024 * 1024, 1200, transcribe_chunk)
 
