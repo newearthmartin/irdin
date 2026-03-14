@@ -6,6 +6,7 @@ import ThemeToggle from "./ThemeToggle.jsx";
 const ALL_FIELDS = [
   { key: "title", label: "Título" },
   { key: "description", label: "Descrição" },
+  { key: "track_name", label: "Nome da faixa" },
   { key: "transcriptions", label: "Transcrição" },
   { key: "tags", label: "Tags" },
 ];
@@ -327,11 +328,21 @@ export default function Search() {
                 {r.track_count} faixa{r.track_count !== 1 ? "s" : ""} de áudio
               </p>
             )}
+            {r.matching_track_names?.length > 0 && (
+              <div className="transcription-matches">
+                {r.matching_track_names.map((name, i) => (
+                  <div key={i} className="transcription-snippet">
+                    <span className="snippet-label">Faixa:</span>{" "}
+                    {highlightText(name, words)}
+                  </div>
+                ))}
+              </div>
+            )}
             {r.transcription_snippets?.length > 0 && (
               <div className="transcription-matches">
                 {r.transcription_snippets.map((t, i) => (
                   <div key={i} className="transcription-snippet">
-                    <span className="snippet-label">{t.track_name}:</span>{" "}
+                    <span className="snippet-label">{highlightText(t.track_name, words)}:</span>{" "}
                     {highlightText(t.snippet, words)}
                   </div>
                 ))}

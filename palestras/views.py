@@ -158,6 +158,7 @@ def search(request):
         "description": "description__unaccent_icontains",
         "categories": "categories__unaccent_icontains",
         "tags": "tags__unaccent_icontains",
+        "track_name": "tracks__name__unaccent_icontains",
         "transcriptions": "tracks__transcription__unaccent_icontains",
     }
 
@@ -202,19 +203,25 @@ def search(request):
     offset = (page - 1) * per_page
 
     search_transcriptions = "transcriptions" in active_fields
+    search_track_name = "track_name" in active_fields
 
     results = []
     for p in qs[offset : offset + per_page]:
         transcription_snippets = []
-        if search_transcriptions:
-            for track in p.tracks.all():
-                if not track.transcription:
-                    continue
+        matching_track_names = []
+        for track in p.tracks.all():
+            has_transcription_snippet = False
+            if search_transcriptions and track.transcription:
                 snippet = _find_snippet(track.transcription, words)
                 if snippet:
+                    has_transcription_snippet = True
                     transcription_snippets.append(
                         {"track_name": track.name, "snippet": snippet}
                     )
+            if search_track_name and not has_transcription_snippet and words and all(
+                word.lower() in track.name.lower() for word in words
+            ):
+                matching_track_names.append(track.name)
 
         results.append(
             {
@@ -228,6 +235,7 @@ def search(request):
                 "language": p.language,
                 "authors": [_author_data(a) for a in p.authors.all()],
                 "track_count": p.tracks.count(),
+                "matching_track_names": matching_track_names,
                 "transcription_snippets": transcription_snippets,
             }
         )
