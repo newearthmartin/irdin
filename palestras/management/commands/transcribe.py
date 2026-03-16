@@ -1,3 +1,7 @@
+import re
+import subprocess
+import sys
+import time
 from pathlib import Path
 
 from django.conf import settings
@@ -42,6 +46,52 @@ DEFAULT_MODELS = {
 }
 
 
+def _audio_duration(audio_path):
+    """Return audio duration in seconds via ffprobe, or 0 on failure."""
+    probe = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+         "-of", "default=noprint_wrappers=1:nokey=1", str(audio_path)],
+        capture_output=True, text=True,
+    )
+    try:
+        return float(probe.stdout.strip())
+    except ValueError:
+        return 0
+
+
+def _make_progress_bar(total_secs):
+    """Create a tqdm progress bar for audio transcription."""
+    total = int(total_secs) if total_secs else None
+    bar_format = (
+        "{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt}s [{elapsed}<{remaining}]"
+        if total_secs else
+        "{desc}: {n_fmt}s [{elapsed}]"
+    )
+    return tqdm(total=total, unit="s", desc="  progress", leave=False, bar_format=bar_format)
+
+
+def _build_transcript(segments, bar=None):
+    """
+    Build plain and timecoded transcripts from a (start_secs, end_secs, text) iterable.
+    Optionally updates a tqdm bar as segments are consumed.
+    Returns (plain_text, timecoded_text, duration_secs).
+    """
+    plain_parts = []
+    timecoded_parts = []
+    duration_secs = 0
+    for start, end, text in segments:
+        if not text:
+            continue
+        plain_parts.append(text)
+        h, rem = divmod(int(start), 3600)
+        m, s = divmod(rem, 60)
+        timecoded_parts.append(f"[{h:02d}:{m:02d}:{s:02d}] {text}")
+        duration_secs = end
+        if bar is not None:
+            bar.update(int(end) - bar.n)
+    return " ".join(plain_parts), "\n".join(timecoded_parts), duration_secs
+
+
 class Command(BaseCommand):
     help = "Transcribe downloaded audio tracks using faster-whisper or mlx-whisper"
 
@@ -81,77 +131,65 @@ class Command(BaseCommand):
             condition_on_previous_text=False,
             vad_filter=True,
         )
-        duration = info.duration
-        if duration:
-            seg_bar = tqdm(
-                total=int(duration),
-                unit="s",
-                desc="  progress",
-                leave=False,
-                bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt}s [{elapsed}<{remaining}]",
-            )
-        else:
-            seg_bar = None
-        plain_parts = []
-        timecoded_parts = []
-        for seg in segments:
-            text = seg.text.strip()
-            plain_parts.append(text)
-            h, rem = divmod(int(seg.start), 3600)
-            m, s = divmod(rem, 60)
-            timecoded_parts.append(f"[{h:02d}:{m:02d}:{s:02d}] {text}")
-            if seg_bar:
-                seg_bar.update(int(seg.end) - seg_bar.n)
-        if seg_bar:
-            seg_bar.close()
-        plain_text = " ".join(plain_parts)
-        timecoded_text = "\n".join(timecoded_parts)
-        duration_secs = info.duration
-        return plain_text, timecoded_text, duration_secs
+        bar = _make_progress_bar(info.duration)
+        plain_text, timecoded_text, _ = _build_transcript(
+            ((seg.start, seg.end, seg.text.strip()) for seg in segments), bar
+        )
+        bar.close()
+        return plain_text, timecoded_text, info.duration
 
     def _transcribe_mlx_whisper(self, audio_path, model_name, language=None):
         import mlx_whisper
 
-        result = mlx_whisper.transcribe(
-            str(audio_path),
-            language=language,
-            path_or_hf_repo=model_name,
-            condition_on_previous_text=False,
-        )
+        total_secs = _audio_duration(audio_path)
+        seg_pattern = re.compile(r"^\[[\d:.]+ --> ([\d:.]+)\]")
+
+        def _parse_ts(ts):
+            parts = ts.split(":")
+            return sum(float(p) * 60 ** i for i, p in enumerate(reversed(parts)))
+
+        bar = _make_progress_bar(total_secs)
+        real_stdout = sys.stdout
+
+        class SegmentInterceptor:
+            def write(self, text):
+                m = seg_pattern.match(text.strip())
+                if m:
+                    end_secs = _parse_ts(m.group(1))
+                    bar.update(int(end_secs) - bar.n)
+            def flush(self):
+                pass
+
+        sys.stdout = SegmentInterceptor()
+        try:
+            result = mlx_whisper.transcribe(
+                str(audio_path),
+                language=language,
+                path_or_hf_repo=model_name,
+                condition_on_previous_text=False,
+                verbose=True,
+            )
+        finally:
+            sys.stdout = real_stdout
+            bar.close()
+
         segments = result.get("segments", [])
-        plain_parts = []
-        timecoded_parts = []
-        for seg in tqdm(segments, desc="  segments", leave=False):
-            text = seg["text"].strip()
-            plain_parts.append(text)
-            h, rem = divmod(int(seg["start"]), 3600)
-            m, s = divmod(rem, 60)
-            timecoded_parts.append(f"[{h:02d}:{m:02d}:{s:02d}] {text}")
-        plain_text = " ".join(plain_parts)
-        timecoded_text = "\n".join(timecoded_parts)
-        duration_secs = segments[-1]["end"] if segments else 0
+        plain_text, timecoded_text, duration_secs = _build_transcript(
+            (seg["start"], seg["end"], seg["text"].strip()) for seg in segments
+        )
         return plain_text, timecoded_text, duration_secs
 
     def _transcribe_whisper_cpp(self, audio_path, model):
+        total_secs = _audio_duration(audio_path)
+        bar = _make_progress_bar(total_secs)
         segments = model.transcribe(str(audio_path))
-        plain_parts = []
-        timecoded_parts = []
-        for seg in segments:
-            text = seg.text.strip()
-            if not text:
-                continue
-            plain_parts.append(text)
-            start_secs = seg.t0 / 100
-            h, rem = divmod(int(start_secs), 3600)
-            m, s = divmod(rem, 60)
-            timecoded_parts.append(f"[{h:02d}:{m:02d}:{s:02d}] {text}")
-        plain_text = " ".join(plain_parts)
-        timecoded_text = "\n".join(timecoded_parts)
-        duration_secs = segments[-1].t1 / 100 if segments else 0
+        plain_text, timecoded_text, duration_secs = _build_transcript(
+            ((seg.t0 / 100, seg.t1 / 100, seg.text.strip()) for seg in segments), bar
+        )
+        bar.close()
         return plain_text, timecoded_text, duration_secs
 
     def _transcribe_groq(self, audio_path, model_name, language=None):
-        import re
         import time
         from groq import Groq, RateLimitError
 
@@ -211,15 +249,9 @@ class Command(BaseCommand):
 
     def _split_audio(self, audio_path, chunk_secs=1200, overlap_secs=15):
         """Split audio into overlapping chunks using ffmpeg, returning (chunk_path, offset_secs) list."""
-        import subprocess
         import tempfile
 
-        probe = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-             "-of", "default=noprint_wrappers=1:nokey=1", audio_path],
-            capture_output=True, text=True,
-        )
-        total_secs = float(probe.stdout.strip())
+        total_secs = _audio_duration(audio_path)
         tmpdir = tempfile.mkdtemp()
         chunks = []
         offset = 0
@@ -332,6 +364,7 @@ class Command(BaseCommand):
                 continue
 
             language = _palestra_language(track)
+            t0 = time.monotonic()
             try:
                 if backend == "faster-whisper":
                     plain_text, timecoded_text, duration_secs = (
@@ -371,7 +404,8 @@ class Command(BaseCommand):
             tc_path.write_text(timecoded_text, encoding="utf-8")
 
             words = len(plain_text.split())
-            tqdm.write(f"{track.name} — {duration_secs:.0f}s audio, {words} words")
+            elapsed = time.monotonic() - t0
+            tqdm.write(f"  finished: {duration_secs:.0f}s audio, {words} words, transcribed in {elapsed:.0f}s")
 
         total_done = AudioTrack.objects.filter(transcribed_on__isnull=False).count()
         total = AudioTrack.objects.exclude(local_path=None).count()
