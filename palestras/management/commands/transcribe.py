@@ -63,9 +63,9 @@ def _make_progress_bar(total_secs):
     """Create a tqdm progress bar for audio transcription."""
     total = int(total_secs) if total_secs else None
     bar_format = (
-        "{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt}s [{elapsed}<{remaining}]"
+        "{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt}s [{elapsed}<{remaining}, {rate_noinv_fmt}]"
         if total_secs else
-        "{desc}: {n_fmt}s [{elapsed}]"
+        "{desc}: {n_fmt}s [{elapsed}, {rate_noinv_fmt}]"
     )
     return tqdm(total=total, unit="s", desc="  progress", leave=False, bar_format=bar_format)
 
