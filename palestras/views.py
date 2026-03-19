@@ -8,6 +8,27 @@ from .models import Author, Palestra
 
 FRONTEND_INDEX = settings.BASE_DIR / "static" / "frontend" / "index.html"
 
+SITE_URL = "https://irdin.multilanguage.xyz/"
+SITE_TITLE = "IRDIN - Pesquisa de Palestras"
+SITE_DESCRIPTION = "Pesquise e explore palestras da comunidade Figueira"
+
+
+def _og_tags(url, title, description):
+    return (
+        f'    <meta property="og:type" content="website" />\n'
+        f'    <meta property="og:url" content="{escape(url)}" />\n'
+        f'    <meta property="og:title" content="{escape(title)}" />\n'
+        f'    <meta property="og:description" content="{escape(description)}" />'
+    )
+
+
+def _inject_og(url, title, description):
+    meta_desc = f'    <meta name="description" content="{escape(description)}" />' if description else ""
+    html = FRONTEND_INDEX.read_text()
+    html = html.replace("<!-- META_DESCRIPTION -->", meta_desc, 1)
+    html = html.replace("<!-- OG_TAGS -->", _og_tags(url, title, description), 1)
+    return html
+
 
 def _author_data(author):
     photo = str(author.photo) if author.photo else None
@@ -118,25 +139,14 @@ def palestra_page(request, slug):
     """Serve index.html with Open Graph meta tags for link previews."""
     try:
         p = Palestra.objects.prefetch_related("authors").get(slug=slug)
+        author_names = ", ".join(a.name for a in p.authors.all())
+        title = f"{author_names} - {p.title}" if author_names else p.title
+        description = p.description[:200].strip() if p.description else ""
+        url = request.build_absolute_uri()
     except Palestra.DoesNotExist:
-        with open(FRONTEND_INDEX) as f:
-            return HttpResponse(f.read(), content_type="text/html")
+        title, description, url = SITE_TITLE, SITE_DESCRIPTION, SITE_URL
 
-    author_names = ", ".join(a.name for a in p.authors.all())
-    og_title = f"{author_names} - {p.title}" if author_names else p.title
-    description = p.description[:200].strip() if p.description else ""
-
-    og_tags = f"""
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="{escape(og_title)}" />
-    <meta property="og:description" content="{escape(description)}" />
-    <meta property="og:url" content="{escape(request.build_absolute_uri())}" />"""
-
-    with open(FRONTEND_INDEX) as f:
-        html = f.read()
-
-    html = html.replace("</head>", og_tags + "\n  </head>", 1)
-    return HttpResponse(html, content_type="text/html")
+    return HttpResponse(_inject_og(url, title, description), content_type="text/html")
 
 
 def search(request):

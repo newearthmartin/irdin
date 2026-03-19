@@ -23,7 +23,7 @@ from django.contrib import admin
 from django.http import FileResponse, Http404, HttpResponse, StreamingHttpResponse
 from django.urls import path, re_path
 
-from palestras.views import authors_list, categories_list, languages_list, palestra_detail, palestra_page, search
+from palestras.views import SITE_DESCRIPTION, SITE_TITLE, SITE_URL, _inject_og, authors_list, categories_list, languages_list, palestra_detail, palestra_page, search
 
 FRONTEND_INDEX = settings.BASE_DIR / "static" / "frontend" / "index.html"
 
@@ -34,7 +34,7 @@ def robots_txt(request):
 
 
 def serve_frontend(request):
-    return FileResponse(open(FRONTEND_INDEX, "rb"), content_type="text/html")
+    return HttpResponse(_inject_og(SITE_URL, SITE_TITLE, SITE_DESCRIPTION), content_type="text/html")
 
 
 def serve_media(request, path):
