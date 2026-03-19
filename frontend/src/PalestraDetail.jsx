@@ -133,7 +133,7 @@ function TrackPlayer({ track, words, initialTime, onSeek, getShareUrl, onCopy })
   }
 
   return (
-    <div className="track-section" ref={trackSectionRef}>
+    <div className="track-section" ref={trackSectionRef} data-id={track.id}>
       <h3 className="track-name">{track.name}</h3>
       <audio
         ref={audioRef}
@@ -266,7 +266,7 @@ export default function PalestraDetail() {
       </div>
       <ThemeToggle />
     </div>
-    <div className="container detail-page">
+    <div className="container detail-page" data-id={data.id}>
       <h1>{data.title}</h1>
 
       {data.authors.length > 0 && (
