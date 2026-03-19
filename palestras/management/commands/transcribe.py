@@ -117,6 +117,9 @@ class Command(BaseCommand):
             action="store_true",
             help="Re-transcribe tracks done with a different method",
         )
+        parser.add_argument(
+            "--pk", type=int, default=None, help="Transcribe a specific track by primary key"
+        )
 
     def _resolve_mlx_model(self, model_name):
         """Map short model names to MLX HF repos, pass through full repo names."""
@@ -311,17 +314,21 @@ class Command(BaseCommand):
         backend = options["backend"]
         model_name = options["model"] or DEFAULT_MODELS[backend]
         retranscribe = options["retranscribe"]
+        pk = options["pk"]
 
         if backend == "mlx-whisper":
             model_name = self._resolve_mlx_model(model_name)
 
         method = f"{backend}:{model_name}"
 
-        qs = AudioTrack.objects.exclude(local_path=None)
-        if retranscribe:
-            qs = qs.exclude(transcription_method=method)
+        if pk:
+            qs = AudioTrack.objects.filter(pk=pk).exclude(local_path=None)
         else:
-            qs = qs.filter(transcribed_on__isnull=True)
+            qs = AudioTrack.objects.exclude(local_path=None)
+            if retranscribe:
+                qs = qs.exclude(transcription_method=method)
+            else:
+                qs = qs.filter(transcribed_on__isnull=True)
 
         pending = [t for t in qs if Path(settings.MEDIA_ROOT / t.local_path.name).exists()]
         if offset:
