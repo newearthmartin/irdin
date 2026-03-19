@@ -44,6 +44,11 @@ def download_tracks(tracks, on_progress=None, delay=0):
     with httpx.Client(timeout=120, follow_redirects=True) as client:
         for track in tracks:
             filename = track.mp3_url.rstrip("/").split("/")[-1]
+            if not filename:
+                if on_progress:
+                    on_progress(track, "", 0, ValueError(f"Empty filename from mp3_url: {track.mp3_url!r}"))
+                errors += 1
+                continue
             dest = AUDIOS_DIR / filename
 
             if dest.exists():
