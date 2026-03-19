@@ -28,6 +28,11 @@ from palestras.views import authors_list, categories_list, languages_list, pales
 FRONTEND_INDEX = settings.BASE_DIR / "static" / "frontend" / "index.html"
 
 
+def robots_txt(request):
+    content = "User-agent: *\nDisallow: /admin/\nDisallow: /api/\nAllow: /\n"
+    return HttpResponse(content, content_type="text/plain")
+
+
 def serve_frontend(request):
     return FileResponse(open(FRONTEND_INDEX, "rb"), content_type="text/html")
 
@@ -62,6 +67,7 @@ def serve_media(request, path):
 
 
 urlpatterns = [
+    path('robots.txt', robots_txt),
     path('admin/', admin.site.urls),
     path('api/authors', authors_list),
     path('api/languages', languages_list),
