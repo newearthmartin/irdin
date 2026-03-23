@@ -58,3 +58,4 @@ uv run python manage.py extract_concepts    # Extract concepts from transcriptio
 - Keep this CLAUDE.md updated when adding new commands, models, or conventions
 - Do not include "Co-Authored-By" or any Claude references in git commit messages
 - Follow the DRY principle — extract shared logic into modules (e.g. `palestras/audio_download.py`) rather than duplicating code across commands and admin actions
+- Prefer `None` over empty strings for empty field values (use `null=True` on model fields)

@@ -7,6 +7,10 @@ wheels/
 *.egg-info
 .idea/
 
+# Logging
+irdin.log
+irdin.log.*
+
 # Virtual environments
 .venv
 
@@ -15,9 +19,11 @@ wheels/
 
 # Project-specific
 db.sqlite3
-irdin/local_settings.py
 media/
 transcriptions/
+
+# Secrets
+irdin/local_settings.py
 
 # Frontend
 frontend/node_modules/
