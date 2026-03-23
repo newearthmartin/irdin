@@ -1,8 +1,8 @@
 import json
 
-import httpx
 from django.core.management.base import BaseCommand
 
+from palestras.llm import call_ollama
 from palestras.models import AudioTrack
 
 SYSTEM_PROMPT = (
@@ -73,22 +73,11 @@ class Command(BaseCommand):
         )
 
     def _extract(self, transcription, model):
-        resp = httpx.post(
-            "http://localhost:11434/api/chat",
-            json={
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": USER_PROMPT.format(transcription)},
-                ],
-                "stream": False,
-                "format": "json",
-            },
-            timeout=120,
-        )
-        resp.raise_for_status()
-        text = resp.json()["message"]["content"]
-        # Extract JSON list from response
+        data = call_ollama(SYSTEM_PROMPT, USER_PROMPT.format(transcription), model=model)
+        if isinstance(data, list):
+            return data
+        # Try to extract list from dict response
+        text = json.dumps(data)
         start = text.find("[")
         end = text.rfind("]") + 1
         if start == -1 or end == 0:

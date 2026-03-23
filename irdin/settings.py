@@ -9,6 +9,10 @@ SECRET_KEY = 'django-insecure-sh8-q^zhb8uatxd^%!ft6tfe__*82tj=v2%&t*^hr2iklp4(03
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+
+OLLAMA_BASE_URL = "http://localhost:11434"
+
+
 ALLOWED_HOSTS = ['*']
 
 
