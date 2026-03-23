@@ -19,6 +19,7 @@ irdin.log.*
 
 # Project-specific
 db.sqlite3
+media
 media/
 transcriptions/
 
