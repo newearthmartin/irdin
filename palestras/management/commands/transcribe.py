@@ -83,9 +83,10 @@ def _build_transcript(segments, bar=None):
         if not text:
             continue
         plain_parts.append(text)
-        h, rem = divmod(int(start), 3600)
-        m, s = divmod(rem, 60)
-        timecoded_parts.append(f"[{h:02d}:{m:02d}:{s:02d}] {text}")
+        h = int(start // 3600)
+        m = int((start % 3600) // 60)
+        s = start % 60
+        timecoded_parts.append(f"[{h:02d}:{m:02d}:{s:06.3f}] {text}")
         duration_secs = end
         if bar is not None:
             bar.update(int(end) - bar.n)
@@ -242,9 +243,10 @@ class Command(BaseCommand):
                     continue
                 abs_start = chunk_offset + start
                 all_plain.append(text)
-                h, rem = divmod(int(abs_start), 3600)
-                m, s = divmod(rem, 60)
-                all_timecoded.append(f"[{h:02d}:{m:02d}:{s:02d}] {text}")
+                h = int(abs_start // 3600)
+                m = int((abs_start % 3600) // 60)
+                s = abs_start % 60
+                all_timecoded.append(f"[{h:02d}:{m:02d}:{s:06.3f}] {text}")
                 total_duration = chunk_offset + end
         if needs_split:
             shutil.rmtree(os.path.dirname(chunks[0][0]), ignore_errors=True)
