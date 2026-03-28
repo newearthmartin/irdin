@@ -41,8 +41,6 @@ DEFAULT_MODELS = {
     "faster-whisper": "large-v3-turbo",
     "mlx-whisper": "mlx-community/whisper-large-v3-turbo",
     "groq": "whisper-large-v3-turbo",
-    "whisper-cpp": "large-v3-turbo",
-    "openai": "gpt-4o-transcribe",
 }
 
 
@@ -109,7 +107,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--backend",
             type=str,
-            choices=["faster-whisper", "mlx-whisper", "groq", "whisper-cpp", "openai"],
+            choices=["faster-whisper", "mlx-whisper", "groq"],
             default="faster-whisper",
             help="Transcription backend (default: faster-whisper)",
         )
@@ -181,16 +179,6 @@ class Command(BaseCommand):
         plain_text, timecoded_text, duration_secs = _build_transcript(
             (seg["start"], seg["end"], seg["text"].strip()) for seg in segments
         )
-        return plain_text, timecoded_text, duration_secs
-
-    def _transcribe_whisper_cpp(self, audio_path, model):
-        total_secs = _audio_duration(audio_path)
-        bar = _make_progress_bar(total_secs)
-        segments = model.transcribe(str(audio_path))
-        plain_text, timecoded_text, duration_secs = _build_transcript(
-            ((seg.t0 / 100, seg.t1 / 100, seg.text.strip()) for seg in segments), bar
-        )
-        bar.close()
         return plain_text, timecoded_text, duration_secs
 
     def _transcribe_groq(self, audio_path, model_name, language=None):
@@ -271,45 +259,6 @@ class Command(BaseCommand):
             offset += chunk_secs
         return chunks
 
-    def _transcribe_openai(self, audio_path, model_name, language=None):
-        import os
-        from openai import OpenAI
-
-        client = OpenAI(api_key=settings.OPENAI_API_KEY)
-        # gpt-4o-transcribe models don't support verbose_json/timestamp_granularities
-        use_verbose = "whisper" in model_name
-
-        if use_verbose:
-            def transcribe_chunk(chunk_path):
-                kwargs = dict(file=None, model=model_name, response_format="verbose_json",
-                              timestamp_granularities=["segment"])
-                if language:
-                    kwargs["language"] = language
-                with open(chunk_path, "rb") as f:
-                    kwargs["file"] = f
-                    response = client.audio.transcriptions.create(**kwargs)
-                return [(seg.start, seg.end, seg.text.strip())
-                        for seg in (response.segments or [])]
-
-            return self._transcribe_chunked(audio_path, 25 * 1024 * 1024, 1200, transcribe_chunk)
-        else:
-            LIMIT = 25 * 1024 * 1024
-            needs_split = os.path.getsize(audio_path) > LIMIT
-            chunks = self._split_audio(audio_path, chunk_secs=1200) if needs_split else [(audio_path, 0)]
-            all_plain = []
-            for chunk_path, _ in chunks:
-                kwargs = dict(file=None, model=model_name, response_format="json")
-                if language:
-                    kwargs["language"] = language
-                with open(chunk_path, "rb") as f:
-                    kwargs["file"] = f
-                    response = client.audio.transcriptions.create(**kwargs)
-                all_plain.append(response.text.strip())
-            if needs_split:
-                import shutil
-                shutil.rmtree(os.path.dirname(chunks[0][0]), ignore_errors=True)
-            return " ".join(all_plain), "", 0
-
     def handle(self, *args, **options):
         limit = options["limit"]
         offset = options["offset"]
@@ -349,16 +298,8 @@ class Command(BaseCommand):
             self.stdout.write(f"Loading model {model_name}...")
             preloaded_model = WhisperModel(model_name, device="auto", compute_type="auto")
             self.stdout.write("Model loaded.")
-        elif backend == "whisper-cpp":
-            from pywhispercpp.model import Model
-
-            self.stdout.write(f"Loading model {model_name}...")
-            preloaded_model = Model(model_name)
-            self.stdout.write("Model loaded.")
         elif backend == "groq":
             self.stdout.write(f"Using Groq API with model {model_name}")
-        elif backend == "openai":
-            self.stdout.write(f"Using OpenAI API with model {model_name}")
         else:
             self.stdout.write(f"Using mlx-whisper with model {model_name}")
 
@@ -379,17 +320,9 @@ class Command(BaseCommand):
                     plain_text, timecoded_text, duration_secs = (
                         self._transcribe_faster_whisper(audio_path, preloaded_model, model_name, language)
                     )
-                elif backend == "whisper-cpp":
-                    plain_text, timecoded_text, duration_secs = (
-                        self._transcribe_whisper_cpp(audio_path, preloaded_model)
-                    )
                 elif backend == "groq":
                     plain_text, timecoded_text, duration_secs = (
                         self._transcribe_groq(audio_path, model_name, language)
-                    )
-                elif backend == "openai":
-                    plain_text, timecoded_text, duration_secs = (
-                        self._transcribe_openai(audio_path, model_name, language)
                     )
                 else:
                     plain_text, timecoded_text, duration_secs = (
