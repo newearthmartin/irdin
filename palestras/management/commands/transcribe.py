@@ -117,7 +117,7 @@ class Command(BaseCommand):
             help="Re-transcribe tracks done with a different method",
         )
         parser.add_argument(
-            "--pk", type=int, default=None, help="Transcribe a specific track by primary key"
+            "--pk", type=str, default=None, help="Transcribe specific track(s) by primary key (e.g. 1 or 1,2,3)"
         )
 
     def _resolve_mlx_model(self, model_name):
@@ -273,7 +273,8 @@ class Command(BaseCommand):
         method = f"{backend}:{model_name}"
 
         if pk:
-            qs = AudioTrack.objects.filter(pk=pk).exclude(local_path=None)
+            pks = [int(p) for p in pk.split(",")]
+            qs = AudioTrack.objects.filter(pk__in=pks).exclude(local_path=None)
         else:
             qs = AudioTrack.objects.exclude(local_path=None)
             if retranscribe:
