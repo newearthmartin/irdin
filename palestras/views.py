@@ -24,9 +24,23 @@ def _og_tags(url, title, description):
 
 def _inject_og(url, title, description):
     meta_desc = f'    <meta name="description" content="{escape(description)}" />' if description else ""
+    verification = getattr(settings, "GOOGLE_SITE_VERIFICATION", "")
+    google_tag = f'    <meta name="google-site-verification" content="{verification}" />' if verification else ""
+    gtag_id = getattr(settings, "GOOGLE_TAG_ID", "")
+    gtag_scripts = (
+        f'<script async src="https://www.googletagmanager.com/gtag/js?id={gtag_id}"></script>\n'
+        f'<script>\n'
+        f'  window.dataLayer = window.dataLayer || [];\n'
+        f'  function gtag(){{dataLayer.push(arguments);}}\n'
+        f'  gtag("js", new Date());\n'
+        f'  gtag("config", "{gtag_id}");\n'
+        f'</script>'
+    ) if gtag_id else ""
     html = FRONTEND_INDEX.read_text()
     html = html.replace("<!-- META_DESCRIPTION -->", meta_desc, 1)
     html = html.replace("<!-- OG_TAGS -->", _og_tags(url, title, description), 1)
+    html = html.replace("<!-- GOOGLE_VERIFICATION -->", google_tag, 1)
+    html = html.replace("<!-- GOOGLE_TAG -->", gtag_scripts, 1)
     return html
 
 
