@@ -108,7 +108,7 @@ class Command(BaseCommand):
             "--backend",
             type=str,
             choices=["faster-whisper", "mlx-whisper", "groq"],
-            default="faster-whisper",
+            default=getattr(settings, "TRANSCRIBE_BACKEND", "faster-whisper"),
             help="Transcription backend (default: faster-whisper)",
         )
         parser.add_argument(
