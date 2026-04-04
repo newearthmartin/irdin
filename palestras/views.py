@@ -1,7 +1,11 @@
+import logging
+
 from django.conf import settings
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse, Http404
 from django.utils.html import escape
+
+logger = logging.getLogger("palestras")
 
 from .db_functions import strip_accents
 from .models import Author, Palestra
@@ -117,6 +121,7 @@ def categories_list(request):
 
 
 def palestra_detail(request, slug):
+    logger.info("palestra_detail slug=%s ip=%s", slug, request.META.get("REMOTE_ADDR"))
     try:
         p = Palestra.objects.prefetch_related("authors", "tracks").get(slug=slug)
     except Palestra.DoesNotExist:
@@ -164,6 +169,7 @@ def palestra_page(request, slug):
 
 
 def search(request):
+    logger.info("search query=%s params=%s", request.GET.urlencode(), request.META.get("REMOTE_ADDR"))
     query = request.GET.get("q", "").strip()
     page = int(request.GET.get("page", 1))
     per_page = 20
