@@ -1,5 +1,6 @@
 import json
 
+from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from palestras.llm import call_ollama
@@ -26,7 +27,7 @@ class Command(BaseCommand):
             "--limit", type=int, default=0, help="Max tracks to process (0=all)"
         )
         parser.add_argument(
-            "--model", type=str, default="llama3.2", help="Ollama model name"
+            "--model", type=str, default=settings.OLLAMA_DEFAULT_MODEL, help="Ollama model name"
         )
 
     def handle(self, *args, **options):

@@ -11,7 +11,8 @@ DEBUG = True
 
 
 OLLAMA_BASE_URL = "http://localhost:11434"
-
+OLLAMA_DEFAULT_MODEL = "llama3.1:8b"
+OPENAI_DEFAULT_MODEL = "gpt-4o-mini"
 
 ALLOWED_HOSTS = ['*']
 
