@@ -1,10 +1,13 @@
 import json
+import logging
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from palestras.llm import call_ollama
 from palestras.models import AudioTrack
+
+logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = (
     "You are a concept extractor. You receive a lecture transcription and return "
@@ -43,18 +46,18 @@ class Command(BaseCommand):
             qs = qs[:limit]
 
         pending = list(qs)
-        self.stdout.write(f"Found {len(pending)} tracks to extract concepts from")
+        logger.info(f"Found {len(pending)} tracks to extract concepts from")
 
         if not pending:
             return
 
         for i, track in enumerate(pending, 1):
-            self.stdout.write(f"[{i}/{len(pending)}] {track.name}")
+            logger.info(f"[{i}/{len(pending)}] {track.name}")
 
             try:
                 concepts = self._extract(track.transcription, model)
             except Exception as e:
-                self.stderr.write(f"  Error: {e}")
+                logger.error(f"  Error: {e}")
                 continue
 
             cleaned = []
@@ -65,13 +68,11 @@ class Command(BaseCommand):
 
             track.concepts = cleaned
             track.save(update_fields=["concepts"])
-            self.stdout.write(f"  -> {len(cleaned)} concepts")
+            logger.info(f"  -> {len(cleaned)} concepts")
 
         total_with = AudioTrack.objects.exclude(concepts=[]).count()
         total = AudioTrack.objects.filter(transcribed_on__isnull=False).count()
-        self.stdout.write(
-            self.style.SUCCESS(f"Done. Tracks with concepts: {total_with}/{total}")
-        )
+        logger.info(f"Done. Tracks with concepts: {total_with}/{total}")
 
     def _extract(self, transcription, model):
         data = call_ollama(SYSTEM_PROMPT, USER_PROMPT.format(transcription), model=model)
@@ -82,6 +83,6 @@ class Command(BaseCommand):
         start = text.find("[")
         end = text.rfind("]") + 1
         if start == -1 or end == 0:
-            self.stderr.write(f"  No JSON list found in response: {text[:200]}")
+            logger.error(f"  No JSON list found in response: {text[:200]}")
             return []
         return json.loads(text[start:end])

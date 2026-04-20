@@ -17,5 +17,5 @@ dependencies = [
 
 [project.optional-dependencies]
 mlx = [
-    "mlx-whisper>=0.4.3",
+    "mlx-whisper>=0.4.3"
 ]

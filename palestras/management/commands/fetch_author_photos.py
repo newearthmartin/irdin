@@ -1,3 +1,4 @@
+import logging
 from urllib.parse import quote, urljoin
 
 import httpx
@@ -6,6 +7,8 @@ from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand
 
 from palestras.models import Author
+
+logger = logging.getLogger(__name__)
 
 HEADERS = {
     "User-Agent": "irdin-scraper/1.0 (https://github.com/irdin; contact@irdin) httpx/0.28"
@@ -36,10 +39,10 @@ class Command(BaseCommand):
             qs = qs[:limit]
 
         authors = list(qs)
-        self.stdout.write(f"Found {len(authors)} authors to process")
+        logger.info(f"Found {len(authors)} authors to process")
 
         for i, author in enumerate(authors, 1):
-            self.stdout.write(f"[{i}/{len(authors)}] {author.name}")
+            logger.info(f"[{i}/{len(authors)}] {author.name}")
             try:
                 search_name = author.wikipedia_search or author.name
                 img_bytes = self._fetch_from_wikipedia(search_name)
@@ -49,19 +52,15 @@ class Command(BaseCommand):
                         ContentFile(img_bytes),
                         save=True,
                     )
-                    self.stdout.write(
-                        self.style.SUCCESS(f"  -> saved {len(img_bytes)} bytes")
-                    )
+                    logger.info(f"  -> saved {len(img_bytes)} bytes")
                 else:
-                    self.stdout.write("  -> no photo found")
+                    logger.info("  -> no photo found")
             except Exception as e:
-                self.stderr.write(f"  Error: {e}")
+                logger.error(f"  Error: {e}")
 
         total_with = Author.objects.exclude(photo="").count()
         total = Author.objects.count()
-        self.stdout.write(
-            self.style.SUCCESS(f"Done. Authors with photos: {total_with}/{total}")
-        )
+        logger.info(f"Done. Authors with photos: {total_with}/{total}")
 
     def _fetch_from_irdin(self, author):
         """Try to find author photo on IRDIN website via a palestra page."""
@@ -73,7 +72,7 @@ class Command(BaseCommand):
             resp = httpx.get(palestra.url, timeout=15, follow_redirects=True)
             resp.raise_for_status()
         except Exception as e:
-            self.stderr.write(f"  IRDIN palestra fetch error: {e}")
+            logger.error(f"  IRDIN palestra fetch error: {e}")
             return None
 
         soup = BeautifulSoup(resp.text, "lxml")
@@ -97,7 +96,7 @@ class Command(BaseCommand):
             resp2 = httpx.get(author_link, timeout=15, follow_redirects=True)
             resp2.raise_for_status()
         except Exception as e:
-            self.stderr.write(f"  IRDIN author page fetch error: {e}")
+            logger.error(f"  IRDIN author page fetch error: {e}")
             return None
 
         soup2 = BeautifulSoup(resp2.text, "lxml")
@@ -167,7 +166,7 @@ class Command(BaseCommand):
             resp.raise_for_status()
             hits = resp.json().get("query", {}).get("search", [])
         except Exception as e:
-            self.stderr.write(f"  Wikipedia {lang} search error: {e}")
+            logger.error(f"  Wikipedia {lang} search error: {e}")
             return None
 
         name_lower = name.lower()
@@ -197,10 +196,10 @@ class Command(BaseCommand):
             thumbnail = data.get("thumbnail", {})
             src = thumbnail.get("source")
             if src:
-                self.stdout.write(f"  -> Wikipedia ({lang}): {data['title']}")
+                logger.info(f"  -> Wikipedia ({lang}): {data['title']}")
             return src
         except Exception as e:
-            self.stderr.write(f"  Wikipedia {lang} summary error ({title}): {e}")
+            logger.error(f"  Wikipedia {lang} summary error ({title}): {e}")
             return None
 
     def _download_image(self, url):
@@ -212,5 +211,5 @@ class Command(BaseCommand):
                 return None
             return resp.content
         except Exception as e:
-            self.stderr.write(f"  Image download error: {e}")
+            logger.error(f"  Image download error: {e}")
             return None

@@ -1,9 +1,12 @@
 import json
+import logging
 from datetime import datetime, timezone
 
 from django.core.management.base import BaseCommand
 
 from palestras.models import AudioTrack
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -34,7 +37,7 @@ class Command(BaseCommand):
         for rec in records:
             track = tracks_by_id.get(rec["id"]) or tracks_by_url.get(rec["mp3_url"])
             if not track:
-                self.stdout.write(f"  Not found: {rec['name']} ({rec['palestra_slug']})")
+                logger.info(f"  Not found: {rec['name']} ({rec['palestra_slug']})")
                 not_found += 1
                 continue
 
@@ -50,6 +53,6 @@ class Command(BaseCommand):
             track.save()
             imported += 1
 
-        self.stdout.write(self.style.SUCCESS(
+        logger.info(
             f"Done. Imported: {imported}, skipped (already transcribed): {skipped}, not found: {not_found}"
-        ))
+        )

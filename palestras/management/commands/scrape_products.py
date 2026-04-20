@@ -1,3 +1,4 @@
+import logging
 import re
 import threading
 import time
@@ -11,6 +12,8 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 from palestras.models import AudioTrack, Author, Palestra
+
+logger = logging.getLogger(__name__)
 
 _print_lock = threading.Lock()
 
@@ -39,7 +42,7 @@ class Command(BaseCommand):
 
         if options["reset"]:
             count = Palestra.objects.exclude(scraped_on=None).update(scraped_on=None)
-            self.stdout.write(self.style.SUCCESS(f"Reset scraped_on for {count} products."))
+            logger.info(f"Reset scraped_on for {count} products.")
             return
 
         qs = Palestra.objects.filter(scraped_on__isnull=True)
@@ -48,7 +51,7 @@ class Command(BaseCommand):
 
         pending = list(qs)
         total = len(pending)
-        self.stdout.write(f"Found {total} unscraped products (workers={workers})")
+        logger.info(f"Found {total} unscraped products (workers={workers})")
 
         done = 0
         errors = 0
@@ -66,18 +69,18 @@ class Command(BaseCommand):
                 except Exception as e:
                     errors += 1
                     with _print_lock:
-                        self.stderr.write(f"  Error ({palestra.slug}): {e}")
+                        logger.error(f"  Error ({palestra.slug}): {e}")
 
                 with _print_lock:
-                    self.stdout.write(f"  [{done + errors}/{total}] done={done} errors={errors}")
+                    logger.info(f"  [{done + errors}/{total}] done={done} errors={errors}")
 
-        self.stdout.write(self.style.SUCCESS(f"Done. Scraped {done}, errors {errors}."))
+        logger.info(f"Done. Scraped {done}, errors {errors}.")
 
     def _scrape_one(self, palestra, delay):
         close_old_connections()
 
         with _print_lock:
-            self.stdout.write(f"  Fetching: {palestra.slug}")
+            logger.info(f"  Fetching: {palestra.slug}")
 
         with httpx.Client(timeout=30, follow_redirects=True) as client:
             resp = client.get(palestra.url)
@@ -90,7 +93,7 @@ class Command(BaseCommand):
         palestra.save()
 
         with _print_lock:
-            self.stdout.write(f"  Saved: {palestra.title}")
+            logger.info(f"  Saved: {palestra.title}")
 
         time.sleep(delay)
 

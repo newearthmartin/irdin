@@ -104,6 +104,11 @@ LOGGING = {
             "class": "logging.StreamHandler",
             "formatter": "simple",
         },
+        "plain_console": {
+            "class": "logging.StreamHandler",
+            "formatter": "plain",
+            "stream": "ext://sys.stdout",
+        },
         "file": {
             "class": "logging.handlers.RotatingFileHandler",
             "filename": BASE_DIR / "irdin.log",
@@ -113,18 +118,28 @@ LOGGING = {
         },
     },
     "formatters": {
+        "plain": {
+            "format": "{message}",
+            "style": "{",
+        },
         "simple": {
             "format": "{asctime} {levelname} {name} {message}",
             "style": "{",
             "datefmt": "%H:%M:%S",
         },
         "verbose": {
+            "()": "irdin.logging.ShortNameFormatter",
             "format": "{asctime} {levelname} {name} {message}",
             "style": "{",
             "datefmt": "%Y-%m-%d %H:%M:%S",
         },
     },
     "loggers": {
+        "palestras.management": {
+            "handlers": ["plain_console", "file"],
+            "level": "INFO",
+            "propagate": False,
+        },
         "palestras": {
             "handlers": ["console", "file"],
             "level": "INFO",

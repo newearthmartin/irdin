@@ -1,3 +1,4 @@
+import logging
 import time
 from urllib.parse import urljoin
 
@@ -6,6 +7,8 @@ from bs4 import BeautifulSoup
 from django.core.management.base import BaseCommand
 
 from palestras.models import Palestra
+
+logger = logging.getLogger(__name__)
 
 BASE_URL = "https://www.irdin.org.br/site/categoria-produto/palestras/"
 
@@ -34,16 +37,16 @@ class Command(BaseCommand):
                 else:
                     url = f"{BASE_URL}page/{page}/"
 
-                self.stdout.write(f"Fetching page {page}: {url}")
+                logger.info(f"Fetching page {page}: {url}")
 
                 try:
                     resp = client.get(url)
                 except httpx.HTTPError as e:
-                    self.stderr.write(f"HTTP error on page {page}: {e}")
+                    logger.error(f"HTTP error on page {page}: {e}")
                     break
 
                 if resp.status_code == 404:
-                    self.stdout.write(f"Page {page} returned 404, stopping.")
+                    logger.info(f"Page {page} returned 404, stopping.")
                     break
 
                 resp.raise_for_status()
@@ -56,7 +59,7 @@ class Command(BaseCommand):
                     product_links = soup.select(".product a.product-image-link")
 
                 if not product_links:
-                    self.stdout.write(f"No products found on page {page}, stopping.")
+                    logger.info(f"No products found on page {page}, stopping.")
                     break
 
                 created_on_page = 0
@@ -76,7 +79,7 @@ class Command(BaseCommand):
                         created_on_page += 1
 
                 total_created += created_on_page
-                self.stdout.write(
+                logger.info(
                     f"  Found {len(product_links)} products, "
                     f"created {created_on_page} new ({total_created} total new)"
                 )
@@ -85,9 +88,7 @@ class Command(BaseCommand):
                 time.sleep(delay)
 
         total = Palestra.objects.count()
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"Done. Created {total_created} new records. "
-                f"Total palestras in DB: {total}"
-            )
+        logger.info(
+            f"Done. Created {total_created} new records. "
+            f"Total palestras in DB: {total}"
         )

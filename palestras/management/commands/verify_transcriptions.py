@@ -1,11 +1,13 @@
+import logging
 import re
 import subprocess
 from pathlib import Path
 
-from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from palestras.models import AudioTrack
+
+logger = logging.getLogger(__name__)
 
 TIMESTAMP_RE = re.compile(r"^\[(\d{2}):(\d{2}):(\d{2})\]\s*(.*)")
 
@@ -79,7 +81,7 @@ class Command(BaseCommand):
             qs = qs[:limit]
 
         tracks = list(qs)
-        self.stdout.write(f"Checking {len(tracks)} transcribed tracks...\n")
+        logger.info(f"Checking {len(tracks)} transcribed tracks...\n")
 
         issues = {
             "empty_transcription": [],
@@ -169,51 +171,49 @@ class Command(BaseCommand):
 
             if track_issues:
                 flags = ", ".join(track_issues)
-                self.stdout.write(
-                    self.style.WARNING(f"[{i}/{len(tracks)}] {track.name[:70]} — {flags}")
-                )
+                logger.warning(f"[{i}/{len(tracks)}] {track.name[:70]} — {flags}")
             else:
                 ok += 1
                 if i % 100 == 0 or i == len(tracks):
-                    self.stdout.write(f"[{i}/{len(tracks)}] checked, {ok} OK so far")
+                    logger.info(f"[{i}/{len(tracks)}] checked, {ok} OK so far")
 
         # Summary
-        self.stdout.write("\n--- Summary ---")
-        self.stdout.write(f"  OK:                {ok}")
-        self.stdout.write(f"  Empty transcription:  {len(issues['empty_transcription'])}")
-        self.stdout.write(f"  No timecoded text:    {len(issues['no_timecoded'])}")
-        self.stdout.write(f"  Audio file missing:   {len(issues['audio_missing'])}")
-        self.stdout.write(f"  Truncated:            {len(issues['truncated'])}")
-        self.stdout.write(f"  Duration drift:       {len(issues['duration_drift'])}")
-        self.stdout.write(f"  Non-monotonic:        {len(issues['non_monotonic'])}")
-        self.stdout.write(f"  Low word density:     {len(issues['low_word_density'])}")
-        self.stdout.write(f"  Large gaps (>5min):   {len(issues['large_gap'])}")
+        logger.info("\n--- Summary ---")
+        logger.info(f"  OK:                {ok}")
+        logger.info(f"  Empty transcription:  {len(issues['empty_transcription'])}")
+        logger.info(f"  No timecoded text:    {len(issues['no_timecoded'])}")
+        logger.info(f"  Audio file missing:   {len(issues['audio_missing'])}")
+        logger.info(f"  Truncated:            {len(issues['truncated'])}")
+        logger.info(f"  Duration drift:       {len(issues['duration_drift'])}")
+        logger.info(f"  Non-monotonic:        {len(issues['non_monotonic'])}")
+        logger.info(f"  Low word density:     {len(issues['low_word_density'])}")
+        logger.info(f"  Large gaps (>5min):   {len(issues['large_gap'])}")
 
         if issues["truncated"]:
-            self.stdout.write(self.style.WARNING("\nTruncated (last timestamp < 80% of audio):"))
+            logger.warning("\nTruncated (last timestamp < 80% of audio):")
             for track, last_ts, dur in issues["truncated"]:
-                self.stdout.write(
+                logger.info(
                     f"  [{track.pk}] {track.name[:60]} — last={_fmt(last_ts)}, audio={_fmt(dur)}"
                 )
 
         if issues["duration_drift"]:
-            self.stdout.write(self.style.WARNING("\nDuration drift (last timestamp >> audio length):"))
+            logger.warning("\nDuration drift (last timestamp >> audio length):")
             for track, last_ts, dur in issues["duration_drift"]:
-                self.stdout.write(
+                logger.info(
                     f"  [{track.pk}] {track.name[:60]} — last={_fmt(last_ts)}, audio={_fmt(dur)}"
                 )
 
         if issues["low_word_density"]:
-            self.stdout.write(self.style.WARNING("\nLow word density:"))
+            logger.warning("\nLow word density:")
             for track, wpm in issues["low_word_density"]:
-                self.stdout.write(
+                logger.info(
                     f"  [{track.pk}] {track.name[:60]} — {wpm:.1f} wpm"
                 )
 
         if issues["large_gap"]:
-            self.stdout.write(self.style.WARNING("\nLarge timestamp gaps:"))
+            logger.warning("\nLarge timestamp gaps:")
             for track, t1, t2, gap in issues["large_gap"]:
-                self.stdout.write(
+                logger.info(
                     f"  [{track.pk}] {track.name[:60]} — gap of {_fmt(gap)} between {_fmt(t1)} and {_fmt(t2)}"
                 )
 
@@ -226,4 +226,4 @@ class Command(BaseCommand):
         )
 
         if total_issues == 0:
-            self.stdout.write(self.style.SUCCESS("\nAll transcriptions look good!"))
+            logger.info("\nAll transcriptions look good!")

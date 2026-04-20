@@ -1,7 +1,11 @@
+import logging
+
 from django.core.management.base import BaseCommand
 from django.db.models import Count, Q
 
 from palestras.models import AudioTrack, Author, Palestra
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -35,34 +39,30 @@ class Command(BaseCommand):
             .order_by("-n")
         )
 
-        w = self.style.WARNING
-        s = self.style.SUCCESS
-        e = self.style.ERROR
+        logger.info("")
+        logger.info("=== Palestras ===")
+        logger.info(f"  Total:               {total_palestras}")
+        logger.info(f"  Scraped:             {scraped}  ({total_palestras - scraped} pending)")
+        logger.info(f"  With description:    {with_description}")
+        logger.info(f"  Without tracks:      {no_tracks}")
 
-        self.stdout.write("")
-        self.stdout.write(w("=== Palestras ==="))
-        self.stdout.write(f"  Total:               {total_palestras}")
-        self.stdout.write(f"  Scraped:             {s(str(scraped))}  ({total_palestras - scraped} pending)")
-        self.stdout.write(f"  With description:    {with_description}")
-        self.stdout.write(f"  Without tracks:      {e(str(no_tracks)) if no_tracks else s('0')}")
+        logger.info("")
+        logger.info("=== Authors ===")
+        logger.info(f"  Total:               {total_authors}")
+        logger.info(f"  With photo:          {with_photo}  ({total_authors - with_photo} without)")
 
-        self.stdout.write("")
-        self.stdout.write(w("=== Authors ==="))
-        self.stdout.write(f"  Total:               {total_authors}")
-        self.stdout.write(f"  With photo:          {with_photo}  ({total_authors - with_photo} without)")
-
-        self.stdout.write("")
-        self.stdout.write(w("=== Audio Tracks ==="))
-        self.stdout.write(f"  Total:               {total_tracks}")
-        self.stdout.write(f"  Downloaded:          {s(str(downloaded))}  ({e(str(not_downloaded)) if not_downloaded else s('0')} missing)")
-        self.stdout.write(f"  Transcribed:         {s(str(transcribed))}  ({e(str(not_transcribed)) if not_transcribed else s('0')} pending)")
-        self.stdout.write(f"  With timestamps:     {timecoded}")
-        self.stdout.write(f"  With concepts:       {with_concepts}")
+        logger.info("")
+        logger.info("=== Audio Tracks ===")
+        logger.info(f"  Total:               {total_tracks}")
+        logger.info(f"  Downloaded:          {downloaded}  ({not_downloaded} missing)")
+        logger.info(f"  Transcribed:         {transcribed}  ({not_transcribed} pending)")
+        logger.info(f"  With timestamps:     {timecoded}")
+        logger.info(f"  With concepts:       {with_concepts}")
 
         if methods:
-            self.stdout.write("")
-            self.stdout.write(w("=== Transcription Methods ==="))
+            logger.info("")
+            logger.info("=== Transcription Methods ===")
             for m in methods:
-                self.stdout.write(f"  {m['transcription_method']:<30} {m['n']}")
+                logger.info(f"  {m['transcription_method']:<30} {m['n']}")
 
-        self.stdout.write("")
+        logger.info("")

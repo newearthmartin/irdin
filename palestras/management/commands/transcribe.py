@@ -1,3 +1,4 @@
+import logging
 import re
 import subprocess
 import sys
@@ -10,6 +11,8 @@ from django.utils import timezone
 from tqdm import tqdm
 
 from palestras.models import AudioTrack
+
+logger = logging.getLogger(__name__)
 
 TRANSCRIPTIONS_DIR = Path(settings.BASE_DIR) / "transcriptions"
 
@@ -287,7 +290,7 @@ class Command(BaseCommand):
             pending = pending[offset:]
         if limit:
             pending = pending[:limit]
-        self.stdout.write(f"Found {len(pending)} tracks to transcribe with {method}")
+        logger.info(f"Found {len(pending)} tracks to transcribe with {method}")
 
         if not pending:
             return
@@ -296,18 +299,18 @@ class Command(BaseCommand):
         if backend == "faster-whisper":
             from faster_whisper import WhisperModel
 
-            self.stdout.write(f"Loading model {model_name}...")
+            logger.info(f"Loading model {model_name}...")
             preloaded_model = WhisperModel(model_name, device="auto", compute_type="auto")
-            self.stdout.write("Model loaded.")
+            logger.info("Model loaded.")
         elif backend == "groq":
-            self.stdout.write(f"Using Groq API with model {model_name}")
+            logger.info(f"Using Groq API with model {model_name}")
         else:
-            self.stdout.write(f"Using mlx-whisper with model {model_name}")
+            logger.info(f"Using mlx-whisper with model {model_name}")
 
         TRANSCRIPTIONS_DIR.mkdir(exist_ok=True)
 
         for i, track in enumerate(pending, 1):
-            self.stdout.write(f"[{i}/{len(pending)}] {track.name}")
+            logger.info(f"[{i}/{len(pending)}] {track.name}")
 
             audio_path = Path(track.local_path.path)
             if not audio_path.exists():
@@ -352,6 +355,4 @@ class Command(BaseCommand):
 
         total_done = AudioTrack.objects.filter(transcribed_on__isnull=False).count()
         total = AudioTrack.objects.exclude(local_path=None).count()
-        self.stdout.write(
-            self.style.SUCCESS(f"Done. Transcribed: {total_done}/{total}")
-        )
+        logger.info(f"Done. Transcribed: {total_done}/{total}")

@@ -1,3 +1,4 @@
+import logging
 import time
 from pathlib import Path
 
@@ -6,6 +7,8 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from palestras.models import AudioTrack
+
+logger = logging.getLogger(__name__)
 
 AUDIOS_DIR = Path(settings.MEDIA_ROOT) / "audios"
 
@@ -30,7 +33,7 @@ class Command(BaseCommand):
             qs = qs[:limit]
 
         tracks = list(qs)
-        self.stdout.write(f"Checking {len(tracks)} downloaded tracks...\n")
+        logger.info(f"Checking {len(tracks)} downloaded tracks...\n")
 
         missing = []
         size_mismatch = []
@@ -43,7 +46,7 @@ class Command(BaseCommand):
                 local = AUDIOS_DIR / filename
 
                 if not local.exists():
-                    self.stdout.write(self.style.ERROR(f"[{i}/{len(tracks)}] MISSING: {filename}"))
+                    logger.error(f"[{i}/{len(tracks)}] MISSING: {filename}")
                     missing.append(track)
                     continue
 
@@ -53,46 +56,42 @@ class Command(BaseCommand):
                     resp = client.head(track.mp3_url)
                     resp.raise_for_status()
                 except httpx.HTTPError as e:
-                    self.stdout.write(self.style.WARNING(
-                        f"[{i}/{len(tracks)}] HEAD failed: {filename} — {e}"
-                    ))
+                    logger.warning(f"[{i}/{len(tracks)}] HEAD failed: {filename} — {e}")
                     head_errors.append(track)
                     time.sleep(delay)
                     continue
 
                 remote_size = resp.headers.get("content-length")
                 if remote_size is None:
-                    self.stdout.write(self.style.WARNING(
+                    logger.warning(
                         f"[{i}/{len(tracks)}] No Content-Length: {filename} (local {local_size:,} bytes)"
-                    ))
+                    )
                     head_errors.append(track)
                 elif int(remote_size) != local_size:
-                    self.stdout.write(self.style.ERROR(
+                    logger.error(
                         f"[{i}/{len(tracks)}] SIZE MISMATCH: {filename} "
                         f"(local {local_size:,} vs remote {int(remote_size):,})"
-                    ))
+                    )
                     size_mismatch.append(track)
                 else:
                     ok += 1
                     if i % 100 == 0 or i == len(tracks):
-                        self.stdout.write(f"[{i}/{len(tracks)}] checked, {ok} OK so far")
+                        logger.info(f"[{i}/{len(tracks)}] checked, {ok} OK so far")
 
                 time.sleep(delay)
 
-        self.stdout.write("\n--- Summary ---")
-        self.stdout.write(f"  OK:             {ok}")
-        self.stdout.write(f"  Missing:        {len(missing)}")
-        self.stdout.write(f"  Size mismatch:  {len(size_mismatch)}")
-        self.stdout.write(f"  HEAD errors:    {len(head_errors)}")
+        logger.info("\n--- Summary ---")
+        logger.info(f"  OK:             {ok}")
+        logger.info(f"  Missing:        {len(missing)}")
+        logger.info(f"  Size mismatch:  {len(size_mismatch)}")
+        logger.info(f"  HEAD errors:    {len(head_errors)}")
 
         if missing or size_mismatch:
-            self.stdout.write(self.style.WARNING(
-                "\nTo re-download bad files, reset them with:"
-            ))
+            logger.warning("\nTo re-download bad files, reset them with:")
             bad_ids = [t.pk for t in missing + size_mismatch]
-            self.stdout.write(
+            logger.info(
                 f"  AudioTrack.objects.filter(pk__in={bad_ids}).update(local_path=None)"
             )
-            self.stdout.write("  Then run: uv run python manage.py download_audios")
+            logger.info("  Then run: uv run python manage.py download_audios")
         else:
-            self.stdout.write(self.style.SUCCESS("\nAll files verified!"))
+            logger.info("\nAll files verified!")

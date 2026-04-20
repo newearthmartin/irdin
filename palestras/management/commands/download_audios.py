@@ -1,6 +1,10 @@
+import logging
+
 from django.core.management.base import BaseCommand
 
 from palestras.audio_download import download_tracks, pending_tracks
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -21,21 +25,19 @@ class Command(BaseCommand):
         tracks = pending_tracks()
         if limit:
             tracks = tracks[:limit]
-        self.stdout.write(f"Found {len(tracks)} tracks to download")
+        logger.info(f"Found {len(tracks)} tracks to download")
 
         total = len(tracks)
 
         def on_progress(track, filename, saved_bytes, error):
             if error:
-                self.stderr.write(f"  Error {filename}: {error}")
+                logger.error(f"  Error {filename}: {error}")
             elif saved_bytes:
-                self.stdout.write(f"  {filename} ({saved_bytes / (1024*1024):.1f} MB)")
+                logger.info(f"  {filename} ({saved_bytes / (1024*1024):.1f} MB)")
 
         downloaded, errors = download_tracks(tracks, on_progress=on_progress, delay=delay)
 
         from palestras.models import AudioTrack
         total_done = AudioTrack.objects.exclude(local_path=None).count()
         total_all = AudioTrack.objects.count()
-        self.stdout.write(
-            self.style.SUCCESS(f"Done. Downloaded: {total_done}/{total_all}")
-        )
+        logger.info(f"Done. Downloaded: {total_done}/{total_all}")

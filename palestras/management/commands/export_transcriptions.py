@@ -1,8 +1,11 @@
 import json
+import logging
 
 from django.core.management.base import BaseCommand
 
 from palestras.models import AudioTrack
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -33,4 +36,4 @@ class Command(BaseCommand):
         with open(output, "w", encoding="utf-8") as f:
             json.dump(records, f, ensure_ascii=False, indent=2)
 
-        self.stdout.write(self.style.SUCCESS(f"Exported {len(records)} transcriptions to {output}"))
+        logger.info(f"Exported {len(records)} transcriptions to {output}")

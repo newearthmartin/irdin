@@ -1,10 +1,13 @@
+import logging
 import os
 from pathlib import Path
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from palestras.models import AudioTrack, Author
+from palestras.models import AudioTrack, Author, Clip
+
+logger = logging.getLogger(__name__)
 
 MEDIA_FIELDS = [
     (AudioTrack, "local_path", "audios"),
@@ -41,7 +44,7 @@ class Command(BaseCommand):
             orphans = sorted(disk_files - db_files)
 
             if not orphans:
-                self.stdout.write(f"{subdir}/: clean ({len(disk_files)} files)")
+                logger.info(f"{subdir}/: clean ({len(disk_files)} files)")
                 continue
 
             orphan_size = sum(
@@ -50,7 +53,7 @@ class Command(BaseCommand):
             size_mb = orphan_size / 1024 / 1024
 
             action = "would delete" if dry_run else "deleting"
-            self.stdout.write(
+            logger.info(
                 f"{subdir}/: {len(orphans)} orphans ({size_mb:.1f} MB), "
                 f"{action}..."
             )
@@ -58,13 +61,11 @@ class Command(BaseCommand):
             for f in orphans:
                 if not dry_run:
                     os.remove(media_dir / f)
-                self.stdout.write(f"  {f}")
+                logger.info(f"  {f}")
 
             total_deleted += len(orphans)
             total_bytes += orphan_size
 
         total_mb = total_bytes / 1024 / 1024
         prefix = "Would delete" if dry_run else "Deleted"
-        self.stdout.write(
-            self.style.SUCCESS(f"\n{prefix} {total_deleted} orphan files ({total_mb:.1f} MB)")
-        )
+        logger.info(f"\n{prefix} {total_deleted} orphan files ({total_mb:.1f} MB)")
