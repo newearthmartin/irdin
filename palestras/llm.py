@@ -5,9 +5,11 @@ from django.conf import settings
 from openai import OpenAI
 
 
-def call_ollama(system, user, model=None, timeout=120):
+def call_ollama(system, user, model=None, timeout=None):
     if not model:
         model = settings.OLLAMA_DEFAULT_MODEL
+    if timeout is None:
+        timeout = getattr(settings, "OLLAMA_TIMEOUT", 300)
     """Call Ollama chat API and return parsed JSON."""
     resp = httpx.post(
         f"{settings.OLLAMA_BASE_URL}/api/chat",

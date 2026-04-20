@@ -10,6 +10,7 @@ SECRET_KEY = 'django-insecure-sh8-q^zhb8uatxd^%!ft6tfe__*82tj=v2%&t*^hr2iklp4(03
 DEBUG = True
 
 
+OLLAMA_TIMEOUT = 1200
 OLLAMA_BASE_URL = "http://localhost:11434"
 OLLAMA_DEFAULT_MODEL = "llama3.1:8b"
 OPENAI_DEFAULT_MODEL = "gpt-4o-mini"
