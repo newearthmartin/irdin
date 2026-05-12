@@ -59,3 +59,4 @@ uv run python manage.py extract_concepts    # Extract concepts from transcriptio
 - Do not include "Co-Authored-By" or any Claude references in git commit messages
 - Follow the DRY principle — extract shared logic into modules (e.g. `palestras/audio_download.py`) rather than duplicating code across commands and admin actions
 - Prefer `None` over empty strings for empty field values (use `null=True` on model fields)
+- NEVER read, print, or echo secrets. `irdin/local_settings.py` contains API keys and other secrets — do not `cat`/`Read` it, and exclude it from any `grep`/search (e.g. `--exclude=local_settings.py`). Never output secret values into the conversation under any circumstance.
